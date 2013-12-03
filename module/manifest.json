@@ -1,0 +1,8 @@
+{
+	"description": "Scanner for 2D barcodes and QR codes.\n\nThe barcode module allows the user to scan a barcode or QR code using the device's camera, returning its content and the barcode type.",
+	"name": "barcode",
+	"platform_version": "v2.0.0",
+    "min_platform_version": "v2.0.1", 
+	"version": "2.2",
+	"changes": "* Fix race condition causing occasional crash on iOS 7."
+}

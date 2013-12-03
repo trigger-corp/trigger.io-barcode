@@ -1,0 +1,56 @@
+TForgeModuleResources
+v6
+r1
+cCheck dependencies
+cCopyPNGFile /Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule/build/Release-iphoneos/barcode.bundle/flash.png flash.png
+cCompileXIB /Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule/barcode_ViewController.xib
+cTouch /Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule/build/Release-iphoneos/barcode.bundle
+
+N/Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule/barcode_ViewController.xib
+c000000005237146200000000000015C2
+t1379341410
+s5570
+
+N/Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule/build/Release-iphoneos/barcode.bundle
+t1379779898
+s136
+
+N/Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule/build/Release-iphoneos/barcode.bundle/barcode_ViewController.nib
+t1379779898
+s136
+
+N/Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule/build/Release-iphoneos/barcode.bundle/flash.png
+t1379779898
+s1754
+
+N/Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule/flash.png
+c0000000051C99C0000000000000005F4
+t1372167168
+s1524
+
+CCheck dependencies
+r0
+lSLF06#21%IDEActivityLogSection1@2#32"com.apple.dt.IDE.BuildLogSection18"Check dependencies18"Check dependencies45bc71bafcedb741^c74674bafcedb741^---0#1#1#--18"Check dependencies36"8BDF73BC-439A-44D7-9640-BD2907E26A04-
+
+CCompileXIB /Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule/barcode_ViewController.xib
+s401472698.457851
+e401472698.517493
+r1
+xCompileXIB
+x/Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule/barcode_ViewController.xib
+lSLF06#21%IDEActivityLogSection1@2#32"com.apple.dt.IDE.BuildLogSection106"Compiling /Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule/barcode_ViewController.xib37"CompileXIB barcode_ViewController.xiba37475bafcedb741^e17a84bafcedb741^---0#0#1#-19%DVTDocumentLocation2@112"file://localhost/Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule/barcode_ViewController.xib0000000000000000^607"CompileXIB barcode_ViewController.xib    cd /Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule    setenv XCODE_DEVELOPER_USR_PATH /Applications/Xcode.app/Contents/Developer/usr/bin/..    /Applications/Xcode.app/Contents/Developer/usr/bin/ibtool --errors --warnings --notices --minimum-deployment-target 4.3 --output-format human-readable-text --compile /Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule/build/Release-iphoneos/barcode.bundle/barcode_ViewController.nib /Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule/barcode_ViewController.xib36"B180F45C-3C36-4BB3-B8AF-1D72866D755D-
+b2B334C9C-56B5-4707-AA28-CEAB4A09E11C
+
+CCopyPNGFile /Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule/build/Release-iphoneos/barcode.bundle/flash.png flash.png
+s401472698.457837
+e401472698.489211
+r1
+xCopyPNGFile
+x/Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule/build/Release-iphoneos/barcode.bundle/flash.png
+xflash.png
+lSLF06#21%IDEActivityLogSection1@2#32"com.apple.dt.IDE.BuildLogSection69"CopyPNGFile build/Release-iphoneos/barcode.bundle/flash.png flash.png69"CopyPNGFile build/Release-iphoneos/barcode.bundle/flash.png flash.pngb47475bafcedb741^323d7dbafcedb741^---0#0#1#-19%DVTDocumentLocation2@95"file://localhost/Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule/flash.png0000000000000000^456"CopyPNGFile build/Release-iphoneos/barcode.bundle/flash.png flash.png    cd /Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule    /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/copypng -compress /Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule/flash.png /Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule/build/Release-iphoneos/barcode.bundle/flash.png36"3B8460C7-F518-41FB-9F71-063DF6F32C02-
+b2B334C9C-56B5-4707-AA28-CEAB4A09E11C
+
+CTouch /Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule/build/Release-iphoneos/barcode.bundle
+r0
+

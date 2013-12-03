@@ -1,0 +1,39 @@
+dependencies: \
+  /Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule/ZXingObjC/client/result/ZXResultParser.m \
+  ZXingObjC/client/result/ZXAddressBookAUResultParser.h \
+  ZXingObjC/client/result/ZXResultParser.h \
+  ZXingObjC/client/result/ZXAddressBookDoCoMoResultParser.h \
+  ZXingObjC/client/result/ZXAbstractDoCoMoResultParser.h \
+  /Users/james/Code/modules/barcode/inspector/ios-inspector/ForgeModule/ZXingObjC/ZXResult.h \
+  ZXingObjC/ZXBarcodeFormat.h ZXingObjC/ZXResultMetadataType.h \
+  ZXingObjC/client/result/ZXAddressBookParsedResult.h \
+  ZXingObjC/client/result/ZXParsedResult.h \
+  ZXingObjC/client/result/ZXParsedResultType.h \
+  ZXingObjC/client/result/ZXBizcardResultParser.h \
+  ZXingObjC/client/result/ZXBookmarkDoCoMoResultParser.h \
+  ZXingObjC/client/result/ZXCalendarParsedResult.h \
+  ZXingObjC/client/result/ZXEmailAddressParsedResult.h \
+  ZXingObjC/client/result/ZXEmailAddressResultParser.h \
+  ZXingObjC/client/result/ZXEmailDoCoMoResultParser.h \
+  ZXingObjC/client/result/ZXExpandedProductParsedResult.h \
+  ZXingObjC/client/result/ZXExpandedProductResultParser.h \
+  ZXingObjC/client/result/ZXGeoParsedResult.h \
+  ZXingObjC/client/result/ZXGeoResultParser.h \
+  ZXingObjC/client/result/ZXISBNParsedResult.h \
+  ZXingObjC/client/result/ZXISBNResultParser.h \
+  ZXingObjC/client/result/ZXProductParsedResult.h \
+  ZXingObjC/client/result/ZXProductResultParser.h \
+  ZXingObjC/client/result/ZXSMSMMSResultParser.h \
+  ZXingObjC/client/result/ZXSMSParsedResult.h \
+  ZXingObjC/client/result/ZXSMSTOMMSTOResultParser.h \
+  ZXingObjC/client/result/ZXSMTPResultParser.h \
+  ZXingObjC/client/result/ZXTelParsedResult.h \
+  ZXingObjC/client/result/ZXTelResultParser.h \
+  ZXingObjC/client/result/ZXTextParsedResult.h \
+  ZXingObjC/client/result/ZXURIParsedResult.h \
+  ZXingObjC/client/result/ZXURIResultParser.h \
+  ZXingObjC/client/result/ZXURLTOResultParser.h \
+  ZXingObjC/client/result/ZXVCardResultParser.h \
+  ZXingObjC/client/result/ZXVEventResultParser.h \
+  ZXingObjC/client/result/ZXWifiParsedResult.h \
+  ZXingObjC/client/result/ZXWifiResultParser.h
