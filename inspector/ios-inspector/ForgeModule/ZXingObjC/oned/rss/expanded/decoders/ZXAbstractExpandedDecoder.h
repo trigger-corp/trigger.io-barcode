@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-@class ZXBitArray, ZXGeneralAppIdDecoder;
+@class ZXBitArray, ZXRSSExpandedGeneralAppIdDecoder;
 
 @interface ZXAbstractExpandedDecoder : NSObject
 
-@property (nonatomic, retain, readonly) ZXGeneralAppIdDecoder *generalDecoder;
-@property (nonatomic, retain, readonly) ZXBitArray *information;
+@property (nonatomic, strong, readonly) ZXRSSExpandedGeneralAppIdDecoder *generalDecoder;
+@property (nonatomic, strong, readonly) ZXBitArray *information;
 
 - (id)initWithInformation:(ZXBitArray *)information;
 - (NSString *)parseInformationWithError:(NSError **)error;

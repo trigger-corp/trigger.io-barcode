@@ -21,40 +21,30 @@
 #import "ZXDecoderResult.h"
 #import "ZXDetectorResult.h"
 #import "ZXErrors.h"
+#import "ZXIntArray.h"
 #import "ZXQRCodeDecoder.h"
+#import "ZXQRCodeDecoderMetaData.h"
 #import "ZXQRCodeDetector.h"
 #import "ZXQRCodeReader.h"
 #import "ZXResult.h"
 
-@interface ZXQRCodeReader ()
-
-@property (nonatomic, retain) ZXQRCodeDecoder *decoder;
-
-- (ZXBitMatrix *)extractPureBits:(ZXBitMatrix *)image;
-- (float)moduleSize:(NSArray *)leftTopBlack image:(ZXBitMatrix *)image;
-
-@end
-
 @implementation ZXQRCodeReader
-
-@synthesize decoder;
 
 - (id)init {
   if (self = [super init]) {
-    self.decoder = [[[ZXQRCodeDecoder alloc] init] autorelease];
+    _decoder = [[ZXQRCodeDecoder alloc] init];
   }
 
   return self;
 }
 
-- (void)dealloc {
-  [decoder release];
-
-  [super dealloc];
-}
-
 /**
  * Locates and decodes a QR code in an image.
+ *
+ * @return a String representing the content encoded by the QR code
+ * @throws NotFoundException if a QR code cannot be found
+ * @throws FormatException if a QR code cannot be decoded
+ * @throws ChecksumException if error correction fails
  */
 - (ZXResult *)decode:(ZXBinaryBitmap *)image error:(NSError **)error {
   return [self decode:image hints:nil error:error];
@@ -62,7 +52,7 @@
 
 - (ZXResult *)decode:(ZXBinaryBitmap *)image hints:(ZXDecodeHints *)hints error:(NSError **)error {
   ZXDecoderResult *decoderResult;
-  NSArray *points;
+  NSMutableArray *points;
   ZXBitMatrix *matrix = [image blackMatrixWithError:error];
   if (!matrix) {
     return nil;
@@ -70,31 +60,35 @@
   if (hints != nil && hints.pureBarcode) {
     ZXBitMatrix *bits = [self extractPureBits:matrix];
     if (!bits) {
-      if (error) *error = NotFoundErrorInstance();
+      if (error) *error = ZXNotFoundErrorInstance();
       return nil;
     }
-    decoderResult = [decoder decodeMatrix:bits hints:hints error:error];
+    decoderResult = [self.decoder decodeMatrix:bits hints:hints error:error];
     if (!decoderResult) {
       return nil;
     }
-    points = [NSArray array];
+    points = [NSMutableArray array];
   } else {
-    ZXDetectorResult *detectorResult = [[[[ZXQRCodeDetector alloc] initWithImage:matrix] autorelease] detect:hints error:error];
+    ZXDetectorResult *detectorResult = [[[ZXQRCodeDetector alloc] initWithImage:matrix] detect:hints error:error];
     if (!detectorResult) {
       return nil;
     }
-    decoderResult = [decoder decodeMatrix:[detectorResult bits] hints:hints error:error];
+    decoderResult = [self.decoder decodeMatrix:[detectorResult bits] hints:hints error:error];
     if (!decoderResult) {
       return nil;
     }
-    points = [detectorResult points];
+    points = [[detectorResult points] mutableCopy];
+  }
+
+  // If the code was mirrored: swap the bottom-left and the top-right points.
+  if ([decoderResult.other isKindOfClass:[ZXQRCodeDecoderMetaData class]]) {
+    [(ZXQRCodeDecoderMetaData *)decoderResult.other applyMirroredCorrection:points];
   }
 
   ZXResult *result = [ZXResult resultWithText:decoderResult.text
-                                      rawBytes:decoderResult.rawBytes
-                                        length:decoderResult.length
-                                  resultPoints:points
-                                        format:kBarcodeFormatQRCode];
+                                     rawBytes:decoderResult.rawBytes
+                                 resultPoints:points
+                                       format:kBarcodeFormatQRCode];
   NSMutableArray *byteSegments = decoderResult.byteSegments;
   if (byteSegments != nil) {
     [result putMetadata:kResultMetadataTypeByteSegments value:byteSegments];
@@ -103,13 +97,18 @@
   if (ecLevel != nil) {
     [result putMetadata:kResultMetadataTypeErrorCorrectionLevel value:ecLevel];
   }
+  if ([decoderResult hasStructuredAppend]) {
+    [result putMetadata:kResultMetadataTypeStructuredAppendSequence
+                  value:@(decoderResult.structuredAppendSequenceNumber)];
+    [result putMetadata:kResultMetadataTypeStructuredAppendParity
+                  value:@(decoderResult.structuredAppendParity)];
+  }
   return result;
 }
 
 - (void)reset {
   // do nothing
 }
-
 
 /**
  * This method detects a code in a "pure" image -- that is, pure monochrome image
@@ -118,8 +117,8 @@
  * case.
  */
 - (ZXBitMatrix *)extractPureBits:(ZXBitMatrix *)image {
-  NSArray *leftTopBlack = image.topLeftOnBit;
-  NSArray *rightBottomBlack = image.bottomRightOnBit;
+  ZXIntArray *leftTopBlack = image.topLeftOnBit;
+  ZXIntArray *rightBottomBlack = image.bottomRightOnBit;
   if (leftTopBlack == nil || rightBottomBlack == nil) {
     return nil;
   }
@@ -129,10 +128,15 @@
     return nil;
   }
 
-  int top = [[leftTopBlack objectAtIndex:1] intValue];
-  int bottom = [[rightBottomBlack objectAtIndex:1] intValue];
-  int left = [[leftTopBlack objectAtIndex:0] intValue];
-  int right = [[rightBottomBlack objectAtIndex:0] intValue];
+  int top = leftTopBlack.array[1];
+  int bottom = rightBottomBlack.array[1];
+  int left = leftTopBlack.array[0];
+  int right = rightBottomBlack.array[0];
+
+  // Sanity check!
+  if (left >= right || top >= bottom) {
+    return nil;
+  }
 
   if (bottom - top != right - left) {
     // Special case, where bottom-right module wasn't black so we found something else in the last row
@@ -153,7 +157,26 @@
   top += nudge;
   left += nudge;
 
-  ZXBitMatrix *bits = [[[ZXBitMatrix alloc] initWithWidth:matrixWidth height:matrixHeight] autorelease];
+  // But careful that this does not sample off the edge
+  int nudgedTooFarRight = left + (int) ((matrixWidth - 1) * moduleSize) - (right - 1);
+  if (nudgedTooFarRight > 0) {
+    if (nudgedTooFarRight > nudge) {
+      // Neither way fits; abort
+      return nil;
+    }
+    left -= nudgedTooFarRight;
+  }
+  int nudgedTooFarDown = top + (int) ((matrixHeight - 1) * moduleSize) - (bottom - 1);
+  if (nudgedTooFarDown > 0) {
+    if (nudgedTooFarDown > nudge) {
+      // Neither way fits; abort
+      return nil;
+    }
+    top -= nudgedTooFarDown;
+  }
+
+  // Now just read off the bits
+  ZXBitMatrix *bits = [[ZXBitMatrix alloc] initWithWidth:matrixWidth height:matrixHeight];
   for (int y = 0; y < matrixHeight; y++) {
     int iOffset = top + (int) (y * moduleSize);
     for (int x = 0; x < matrixWidth; x++) {
@@ -165,11 +188,11 @@
   return bits;
 }
 
-- (float)moduleSize:(NSArray *)leftTopBlack image:(ZXBitMatrix *)image {
+- (float)moduleSize:(ZXIntArray *)leftTopBlack image:(ZXBitMatrix *)image {
   int height = image.height;
   int width = image.width;
-  int x = [[leftTopBlack objectAtIndex:0] intValue];
-  int y = [[leftTopBlack objectAtIndex:1] intValue];
+  int x = leftTopBlack.array[0];
+  int y = leftTopBlack.array[1];
   BOOL inBlack = YES;
   int transitions = 0;
   while (x < width && y < height) {
@@ -177,6 +200,7 @@
       if (++transitions == 5) {
         break;
       }
+      inBlack = !inBlack;
     }
     x++;
     y++;
@@ -185,7 +209,7 @@
     return -1;
   }
 
-  return (x - [[leftTopBlack objectAtIndex:0] intValue]) / 7.0f;
+  return (x - leftTopBlack.array[0]) / 7.0f;
 }
 
 @end

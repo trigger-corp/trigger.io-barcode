@@ -19,13 +19,16 @@
 
 @implementation ZXISBNResultParser
 
+/**
+ * See <a href="http://www.bisg.org/isbn-13/for.dummies.html">ISBN-13 For Dummies</a>
+ */
 - (ZXParsedResult *)parse:(ZXResult *)result {
   ZXBarcodeFormat format = [result barcodeFormat];
   if (format != kBarcodeFormatEan13) {
     return nil;
   }
   NSString *rawText = [ZXResultParser massagedText:result];
-  int length = [rawText length];
+  NSUInteger length = [rawText length];
   if (length != 13) {
     return nil;
   }

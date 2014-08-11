@@ -14,53 +14,48 @@
  * limitations under the License.
  */
 
+#import "ZXIntArray.h"
 #import "ZXModulusGF.h"
 #import "ZXModulusPoly.h"
+#import "ZXPDF417Common.h"
 
 @interface ZXModulusGF ()
 
-@property (nonatomic, retain) NSMutableArray *expTable;
-@property (nonatomic, retain) NSMutableArray *logTable;
-@property (nonatomic, assign) int modulus;
+@property (nonatomic, assign, readonly) int32_t *expTable;
+@property (nonatomic, assign, readonly) int32_t *logTable;
+@property (nonatomic, assign, readonly) int modulus;
 
 @end
 
 @implementation ZXModulusGF
 
-@synthesize expTable;
-@synthesize logTable;
-@synthesize modulus;
-@synthesize one;
-@synthesize zero;
-
 + (ZXModulusGF *)PDF417_GF {
-  return [[[ZXModulusGF alloc] initWithModulus:929 generator:3] autorelease];
+  static dispatch_once_t pred = 0;
+  __strong static id _mod = nil;
+  dispatch_once(&pred, ^{
+    @autoreleasepool {
+      _mod = [[ZXModulusGF alloc] initWithModulus:ZX_PDF417_NUMBER_OF_CODEWORDS generator:3];
+    }
+  });
+  return _mod;
 }
 
-- (id)initWithModulus:(int)aModulus generator:(int)generator {
+- (id)initWithModulus:(int)modulus generator:(int)generator {
   if (self = [super init]) {
-    self.modulus = aModulus;
-    self.expTable = [NSMutableArray arrayWithCapacity:self.modulus];
-    self.logTable = [NSMutableArray arrayWithCapacity:self.modulus];
-    int x = 1;
-    for (int i = 0; i < self.modulus; i++) {
-      [self.expTable addObject:[NSNumber numberWithInt:x]];
-      x = (x * generator) % self.modulus;
+    _modulus = modulus;
+    _expTable = (int32_t *)calloc(self.modulus, sizeof(int32_t));
+    _logTable = (int32_t *)calloc(self.modulus, sizeof(int32_t));
+    int32_t x = 1;
+    for (int i = 0; i < modulus; i++) {
+      _expTable[i] = x;
+      x = (x * generator) % modulus;
     }
-
-    for (int i = 0; i < self.size; i++) {
-      [self.logTable addObject:[NSNumber numberWithInt:0]];
-    }
-
     for (int i = 0; i < self.size - 1; i++) {
-      [self.logTable replaceObjectAtIndex:[[self.expTable objectAtIndex:i] intValue] withObject:[NSNumber numberWithInt:i]];
+      _logTable[_expTable[i]] = i;
     }
     // logTable[0] == 0 but this should never be used
-    int zeroInt = 0;
-    self.zero = [[[ZXModulusPoly alloc] initWithField:self coefficients:&zeroInt coefficientsLen:1] autorelease];
-
-    int oneInt = 1;
-    self.one = [[[ZXModulusPoly alloc] initWithField:self coefficients:&oneInt coefficientsLen:1] autorelease];
+    _zero = [[ZXModulusPoly alloc] initWithField:self coefficients:[[ZXIntArray alloc] initWithLength:1]];
+    _one = [[ZXModulusPoly alloc] initWithField:self coefficients:[[ZXIntArray alloc] initWithInts:1, -1]];
   }
 
   return self;
@@ -73,14 +68,9 @@
   if (coefficient == 0) {
     return self.zero;
   }
-
-  int coefficientsLen = degree + 1;
-  int coefficients[coefficientsLen];
-  coefficients[0] = coefficient;
-  for (int i = 1; i < coefficientsLen; i++) {
-    coefficients[i] = 0;
-  }
-  return [[[ZXModulusPoly alloc] initWithField:self coefficients:coefficients coefficientsLen:coefficientsLen] autorelease];
+  ZXIntArray *coefficients = [[ZXIntArray alloc] initWithLength:degree + 1];
+  coefficients.array[0] = coefficient;
+  return [[ZXModulusPoly alloc] initWithField:self coefficients:coefficients];
 }
 
 - (int)add:(int)a b:(int)b {
@@ -92,21 +82,22 @@
 }
 
 - (int)exp:(int)a {
-  return [[self.expTable objectAtIndex:a] intValue];
+  return _expTable[a];
 }
 
 - (int)log:(int)a {
   if (a == 0) {
     [NSException raise:NSInvalidArgumentException format:@"Argument must be non-zero."];
   }
-  return [[self.logTable objectAtIndex:a] intValue];
+  return _logTable[a];
 }
 
 - (int)inverse:(int)a {
   if (a == 0) {
     [NSException raise:NSInvalidArgumentException format:@"Argument must be non-zero."];
   }
-  return [[self.expTable objectAtIndex:self.size - [[self.logTable objectAtIndex:a] intValue] - 1] intValue];
+
+  return _expTable[_modulus - _logTable[a] - 1];
 }
 
 - (int)multiply:(int)a b:(int)b {
@@ -114,8 +105,7 @@
     return 0;
   }
 
-  int logSum = [[self.logTable objectAtIndex:a] intValue] + [[self.logTable objectAtIndex:b] intValue];
-  return [[self.expTable objectAtIndex:logSum % (self.modulus - 1)] intValue];
+  return _expTable[(_logTable[a] + _logTable[b]) % (_modulus - 1)];
 }
 
 - (int)size {

@@ -18,12 +18,6 @@
 #import "ZXAddressBookParsedResult.h"
 #import "ZXResult.h"
 
-@interface ZXAddressBookDoCoMoResultParser ()
-
-- (NSString *)parseName:(NSString *)name;
-
-@end
-
 @implementation ZXAddressBookDoCoMoResultParser
 
 - (ZXParsedResult *)parse:(ZXResult *)result {
@@ -35,17 +29,20 @@
   if (rawName == nil) {
     return nil;
   }
-  NSString *name = [self parseName:[rawName objectAtIndex:0]];
+  NSString *name = [self parseName:rawName[0]];
   NSString *pronunciation = [[self class] matchSingleDoCoMoPrefixedField:@"SOUND:" rawText:rawText trim:YES];
   NSArray *phoneNumbers = [[self class] matchDoCoMoPrefixedField:@"TEL:" rawText:rawText trim:YES];
   NSArray *emails = [[self class] matchDoCoMoPrefixedField:@"EMAIL:" rawText:rawText trim:YES];
   NSString *note = [[self class] matchSingleDoCoMoPrefixedField:@"NOTE:" rawText:rawText trim:NO];
   NSArray *addresses = [[self class] matchDoCoMoPrefixedField:@"ADR:" rawText:rawText trim:YES];
   NSString *birthday = [[self class] matchSingleDoCoMoPrefixedField:@"BDAY:" rawText:rawText trim:YES];
-  if (birthday != nil && ![[self class] isStringOfDigits:birthday length:8]) {
+  if (![[self class] isStringOfDigits:birthday length:8]) {
     birthday = nil;
   }
   NSArray *urls = [[self class] matchDoCoMoPrefixedField:@"URL:" rawText:rawText trim:YES];
+
+  // Although ORG may not be strictly legal in MECARD, it does exist in VCARD and we might as well
+  // honor it when found in the wild.
   NSString *org = [[self class] matchSingleDoCoMoPrefixedField:@"ORG:" rawText:rawText trim:YES];
 
   return [ZXAddressBookParsedResult addressBookParsedResultWithNames:[self maybeWrap:name]
@@ -67,8 +64,9 @@
 }
 
 - (NSString *)parseName:(NSString *)name {
-  int comma = [name rangeOfString:@","].location;
+  NSUInteger comma = [name rangeOfString:@","].location;
   if (comma != NSNotFound) {
+    // Format may be last,first; switch it around
     return [NSString stringWithFormat:@"%@ %@", [name substringFromIndex:comma + 1], [name substringToIndex:comma]];
   }
   return name;

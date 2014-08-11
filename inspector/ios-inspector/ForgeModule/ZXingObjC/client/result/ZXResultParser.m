@@ -46,58 +46,40 @@
 #import "ZXURLTOResultParser.h"
 #import "ZXVCardResultParser.h"
 #import "ZXVEventResultParser.h"
+#import "ZXVINResultParser.h"
 #import "ZXWifiParsedResult.h"
 #import "ZXWifiResultParser.h"
 
-@interface ZXResultParser ()
-
-+ (NSString *)unescapeBackslash:(NSString *)escaped;
-- (void)appendKeyValue:(NSString *)keyValue result:(NSMutableDictionary *)result;
-- (NSString *)urlDecode:(NSString *)escaped;
-- (int)findFirstEscape:(NSString *)escaped;
-
-@end
-
-static NSArray *PARSERS = nil;
-static NSRegularExpression *DIGITS = nil;
-static NSRegularExpression *ALPHANUM = nil;
-static NSString *AMPERSAND = @"&";
-static NSString *EQUALS = @"=";
-static unichar BYTE_ORDER_MARK = L'\ufeff';
+static NSArray *ZX_PARSERS = nil;
+static NSRegularExpression *ZX_DIGITS = nil;
+static NSString *ZX_AMPERSAND = @"&";
+static NSString *ZX_EQUALS = @"=";
+static unichar ZX_BYTE_ORDER_MARK = L'\ufeff';
 
 @implementation ZXResultParser
 
 + (void)initialize {
-  PARSERS = [[NSArray alloc] initWithObjects:
-             [[[ZXBookmarkDoCoMoResultParser alloc] init] autorelease],
-             [[[ZXAddressBookDoCoMoResultParser alloc] init] autorelease],
-             [[[ZXEmailDoCoMoResultParser alloc] init] autorelease],
-             [[[ZXAddressBookAUResultParser alloc] init] autorelease],
-             [[[ZXVCardResultParser alloc] init] autorelease],
-             [[[ZXBizcardResultParser alloc] init] autorelease],
-             [[[ZXVEventResultParser alloc] init] autorelease],
-             [[[ZXEmailAddressResultParser alloc] init] autorelease],
-             [[[ZXSMTPResultParser alloc] init] autorelease],
-             [[[ZXTelResultParser alloc] init] autorelease],
-             [[[ZXSMSMMSResultParser alloc] init] autorelease],
-             [[[ZXSMSTOMMSTOResultParser alloc] init] autorelease],
-             [[[ZXGeoResultParser alloc] init] autorelease],
-             [[[ZXWifiResultParser alloc] init] autorelease],
-             [[[ZXURLTOResultParser alloc] init] autorelease],
-             [[[ZXURIResultParser alloc] init] autorelease],
-             [[[ZXISBNResultParser alloc] init] autorelease],
-             [[[ZXProductResultParser alloc] init] autorelease],
-             [[[ZXExpandedProductResultParser alloc] init] autorelease], nil];
-  DIGITS = [[NSRegularExpression alloc] initWithPattern:@"^\\d*$" options:0 error:nil];
-  ALPHANUM = [[NSRegularExpression alloc] initWithPattern:@"^[a-zA-Z0-9]*$" options:0 error:nil];
-}
-
-+ (NSString *)massagedText:(ZXResult *)result {
-  NSString *text = result.text;
-  if (text.length > 0 && [text characterAtIndex:0] == BYTE_ORDER_MARK) {
-    text = [text substringFromIndex:1];
-  }
-  return text;
+  ZX_PARSERS = @[[[ZXBookmarkDoCoMoResultParser alloc] init],
+                 [[ZXAddressBookDoCoMoResultParser alloc] init],
+                 [[ZXEmailDoCoMoResultParser alloc] init],
+                 [[ZXAddressBookAUResultParser alloc] init],
+                 [[ZXVCardResultParser alloc] init],
+                 [[ZXBizcardResultParser alloc] init],
+                 [[ZXVEventResultParser alloc] init],
+                 [[ZXEmailAddressResultParser alloc] init],
+                 [[ZXSMTPResultParser alloc] init],
+                 [[ZXTelResultParser alloc] init],
+                 [[ZXSMSMMSResultParser alloc] init],
+                 [[ZXSMSTOMMSTOResultParser alloc] init],
+                 [[ZXGeoResultParser alloc] init],
+                 [[ZXWifiResultParser alloc] init],
+                 [[ZXURLTOResultParser alloc] init],
+                 [[ZXURIResultParser alloc] init],
+                 [[ZXISBNResultParser alloc] init],
+                 [[ZXProductResultParser alloc] init],
+                 [[ZXExpandedProductResultParser alloc] init],
+                 [[ZXVINResultParser alloc] init]];
+  ZX_DIGITS = [[NSRegularExpression alloc] initWithPattern:@"^\\d+$" options:0 error:nil];
 }
 
 - (ZXParsedResult *)parse:(ZXResult *)result {
@@ -106,8 +88,16 @@ static unichar BYTE_ORDER_MARK = L'\ufeff';
                                userInfo:nil];
 }
 
++ (NSString *)massagedText:(ZXResult *)result {
+  NSString *text = result.text;
+  if (text.length > 0 && [text characterAtIndex:0] == ZX_BYTE_ORDER_MARK) {
+    text = [text substringFromIndex:1];
+  }
+  return text;
+}
+
 + (ZXParsedResult *)parseResult:(ZXResult *)theResult {
-  for (ZXResultParser *parser in PARSERS) {
+  for (ZXResultParser *parser in ZX_PARSERS) {
     ZXParsedResult *result = [parser parse:theResult];
     if (result != nil) {
       return result;
@@ -131,19 +121,19 @@ static unichar BYTE_ORDER_MARK = L'\ufeff';
 }
 
 - (NSArray *)maybeWrap:(NSString *)value {
-  return value == nil ? nil : [NSArray arrayWithObjects:value, nil];
+  return value == nil ? nil : @[value];
 }
 
 + (NSString *)unescapeBackslash:(NSString *)escaped {
-  int backslash = [escaped rangeOfString:@"\\"].location;
+  NSUInteger backslash = [escaped rangeOfString:@"\\"].location;
   if (backslash == NSNotFound) {
     return escaped;
   }
-  int max = [escaped length];
+  NSUInteger max = [escaped length];
   NSMutableString *unescaped = [NSMutableString stringWithCapacity:max - 1];
   [unescaped appendString:[escaped substringToIndex:backslash]];
   BOOL nextIsEscaped = NO;
-  for (int i = backslash; i < max; i++) {
+  for (int i = (int)backslash; i < max; i++) {
     unichar c = [escaped characterAtIndex:i];
     if (nextIsEscaped || c != '\\') {
       [unescaped appendFormat:@"%C", c];
@@ -169,7 +159,7 @@ static unichar BYTE_ORDER_MARK = L'\ufeff';
 }
 
 + (BOOL)isStringOfDigits:(NSString *)value length:(unsigned int)length {
-  return value != nil && length == value.length && [DIGITS numberOfMatchesInString:value options:0 range:NSMakeRange(0, value.length)] > 0;
+  return value != nil && length > 0 && length == value.length && [ZX_DIGITS numberOfMatchesInString:value options:0 range:NSMakeRange(0, value.length)] > 0;
 }
 
 - (NSString *)urlDecode:(NSString *)escaped {
@@ -178,11 +168,11 @@ static unichar BYTE_ORDER_MARK = L'\ufeff';
   }
 
   int first = [self findFirstEscape:escaped];
-  if (first == NSNotFound) {
+  if (first == -1) {
     return escaped;
   }
 
-  int max = [escaped length];
+  NSUInteger max = [escaped length];
   NSMutableString *unescaped = [NSMutableString stringWithCapacity:max - 2];
   [unescaped appendString:[escaped substringToIndex:first]];
 
@@ -214,7 +204,7 @@ static unichar BYTE_ORDER_MARK = L'\ufeff';
 }
 
 - (int)findFirstEscape:(NSString *)escaped {
-  int max = [escaped length];
+  NSUInteger max = [escaped length];
   for (int i = 0; i < max; i++) {
     unichar c = [escaped characterAtIndex:i];
     if (c == '+' || c == '%') {
@@ -222,44 +212,36 @@ static unichar BYTE_ORDER_MARK = L'\ufeff';
     }
   }
 
-  return NSNotFound;
+  return -1;
 }
 
-+ (BOOL)isSubstringOfDigits:(NSString *)value offset:(int)offset length:(unsigned int)length {
-  if (value == nil) {
++ (BOOL)isSubstringOfDigits:(NSString *)value offset:(int)offset length:(int)length {
+  if (value == nil || length <= 0) {
     return NO;
   }
   int max = offset + length;
-  return value.length >= max && [DIGITS numberOfMatchesInString:value options:0 range:NSMakeRange(offset, max - offset)] > 0;
-}
-
-+ (BOOL)isSubstringOfAlphaNumeric:(NSString *)value offset:(int)offset length:(unsigned int)length {
-  if (value == nil) {
-    return NO;
-  }
-  int max = offset + length;
-  return value.length >= max && [ALPHANUM numberOfMatchesInString:value options:0 range:NSMakeRange(offset, max - offset)] > 0;
+  return value.length >= max && [ZX_DIGITS numberOfMatchesInString:value options:0 range:NSMakeRange(offset, max - offset)] > 0;
 }
 
 - (NSMutableDictionary *)parseNameValuePairs:(NSString *)uri {
-  int paramStart = [uri rangeOfString:@"?"].location;
+  NSUInteger paramStart = [uri rangeOfString:@"?"].location;
   if (paramStart == NSNotFound) {
     return nil;
   }
   NSMutableDictionary *result = [NSMutableDictionary dictionaryWithCapacity:3];
-  for (NSString *keyValue in [[uri substringFromIndex:paramStart + 1] componentsSeparatedByString:AMPERSAND]) {
+  for (NSString *keyValue in [[uri substringFromIndex:paramStart + 1] componentsSeparatedByString:ZX_AMPERSAND]) {
     [self appendKeyValue:keyValue result:result];
   }
   return result;
 }
 
 - (void)appendKeyValue:(NSString *)keyValue result:(NSMutableDictionary *)result {
-  NSRange equalsRange = [keyValue rangeOfString:EQUALS];
+  NSRange equalsRange = [keyValue rangeOfString:ZX_EQUALS];
   if (equalsRange.location != NSNotFound) {
     NSString *key = [keyValue substringToIndex:equalsRange.location];
     NSString *value = [keyValue substringFromIndex:equalsRange.location + 1];
     value = [self urlDecode:value];
-    [result setObject:value forKey:key];
+    result[key] = value;
   }
 }
 
@@ -271,26 +253,29 @@ static unichar BYTE_ORDER_MARK = L'\ufeff';
 
 + (NSArray *)matchPrefixedField:(NSString *)prefix rawText:(NSString *)rawText endChar:(unichar)endChar trim:(BOOL)trim {
   NSMutableArray *matches = nil;
-  int i = 0;
-  int max = [rawText length];
+  NSUInteger i = 0;
+  NSUInteger max = [rawText length];
   while (i < max) {
     i = [rawText rangeOfString:prefix options:NSLiteralSearch range:NSMakeRange(i, [rawText length] - i - 1)].location;
     if (i == NSNotFound) {
       break;
     }
-    i += [prefix length];
-    int start = i;
+    i += [prefix length]; // Skip past this prefix we found to start
+    NSUInteger start = i; // Found the start of a match here
     BOOL more = YES;
     while (more) {
       i = [rawText rangeOfString:[NSString stringWithFormat:@"%C", endChar] options:NSLiteralSearch range:NSMakeRange(i, [rawText length] - i)].location;
       if (i == NSNotFound) {
+        // No terminating end character? uh, done. Set i such that loop terminates and break
         i = [rawText length];
         more = NO;
       } else if ([rawText characterAtIndex:i - 1] == '\\') {
+        // semicolon was escaped so continue
         i++;
       } else {
+        // found a match
         if (matches == nil) {
-          matches = [NSMutableArray arrayWithCapacity:3];
+          matches = [NSMutableArray arrayWithCapacity:3]; // lazy init
         }
         NSString *element = [self unescapeBackslash:[rawText substringWithRange:NSMakeRange(start, i - start)]];
         if (trim) {
@@ -312,7 +297,7 @@ static unichar BYTE_ORDER_MARK = L'\ufeff';
 
 + (NSString *)matchSinglePrefixedField:(NSString *)prefix rawText:(NSString *)rawText endChar:(unichar)endChar trim:(BOOL)trim {
   NSArray *matches = [self matchPrefixedField:prefix rawText:rawText endChar:endChar trim:trim];
-  return matches == nil ? nil : [matches objectAtIndex:0];
+  return matches == nil ? nil : matches[0];
 }
 
 @end

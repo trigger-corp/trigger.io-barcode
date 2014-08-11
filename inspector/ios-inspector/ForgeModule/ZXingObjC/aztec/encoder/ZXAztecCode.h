@@ -29,7 +29,7 @@
 /**
  * Compact or full symbol indicator
  */
-@property (nonatomic, assign) BOOL compact;
+@property (nonatomic, assign, getter = isCompact) BOOL compact;
 
 /**
  * Number of levels
@@ -39,7 +39,7 @@
 /**
  * The symbol image
  */
-@property (nonatomic, retain) ZXBitMatrix *matrix;
+@property (nonatomic, strong) ZXBitMatrix *matrix;
 
 /**
  * Size in pixels (width and height)

@@ -14,99 +14,78 @@
  * limitations under the License.
  */
 
+#import "ZXIntArray.h"
 #import "ZXModulusGF.h"
 #import "ZXModulusPoly.h"
 #import "ZXPDF417ECErrorCorrection.h"
 
 @interface ZXPDF417ECErrorCorrection ()
 
-@property (nonatomic, retain) ZXModulusGF *field;
-
-- (NSArray *)runEuclideanAlgorithm:(ZXModulusPoly *)a b:(ZXModulusPoly *)b R:(int)R;
-- (NSArray *)findErrorLocations:(ZXModulusPoly *)errorLocator;
-- (NSArray *)findErrorMagnitudes:(ZXModulusPoly *)errorEvaluator errorLocator:(ZXModulusPoly *)errorLocator errorLocations:(NSArray *)errorLocations;
+@property (nonatomic, strong, readonly) ZXModulusGF *field;
 
 @end
 
 @implementation ZXPDF417ECErrorCorrection
 
-@synthesize field;
-
 - (id)init {
   if (self = [super init]) {
-    self.field = [ZXModulusGF PDF417_GF];
+    _field = [ZXModulusGF PDF417_GF];
   }
 
   return self;
 }
 
-- (void)dealloc {
-  [field release];
-
-  [super dealloc];
-}
-
-- (BOOL)decode:(NSMutableArray *)received numECCodewords:(int)numECCodewords erasures:(NSArray *)erasures {
-  int coefficients[received.count];
-  for (int i = 0; i < received.count; i++) {
-    coefficients[i] = [[received objectAtIndex:i] intValue];
-  }
-  ZXModulusPoly *poly = [[[ZXModulusPoly alloc] initWithField:self.field coefficients:coefficients coefficientsLen:received.count] autorelease];
-
-  int S[numECCodewords];
-  for (int i = 0; i < numECCodewords; i++) {
-    S[i] = 0;
-  }
-
+- (int)decode:(ZXIntArray *)received numECCodewords:(int)numECCodewords erasures:(ZXIntArray *)erasures {
+  ZXModulusPoly *poly = [[ZXModulusPoly alloc] initWithField:self.field coefficients:received];
+  ZXIntArray *S = [[ZXIntArray alloc] initWithLength:numECCodewords];
   BOOL error = NO;
   for (int i = numECCodewords; i > 0; i--) {
     int eval = [poly evaluateAt:[self.field exp:i]];
-    S[numECCodewords - i] = eval;
+    S.array[numECCodewords - i] = eval;
     if (eval != 0) {
       error = YES;
     }
   }
 
-  if (error) {
-
-    ZXModulusPoly *knownErrors = self.field.one;
-    for (NSNumber *erasure in erasures) {
-      int b = [self.field exp:received.count - 1 - [erasure intValue]];
-      // Add (1 - bx) term:
-      int termCoefficients[2] = { [self.field subtract:0 b:b], 1 };
-      ZXModulusPoly *term = [[[ZXModulusPoly alloc] initWithField:field coefficients:termCoefficients coefficientsLen:2] autorelease];
-      knownErrors = [knownErrors multiply:term];
-    }
-
-    ZXModulusPoly *syndrome = [[[ZXModulusPoly alloc] initWithField:self.field coefficients:S coefficientsLen:numECCodewords] autorelease];
-    //[syndrome multiply:knownErrors];
-
-    NSArray *sigmaOmega = [self runEuclideanAlgorithm:[self.field buildMonomial:numECCodewords coefficient:1] b:syndrome R:numECCodewords];
-    if (!sigmaOmega) {
-      return NO;
-    }
-
-    ZXModulusPoly *sigma = [sigmaOmega objectAtIndex:0];
-    ZXModulusPoly *omega = [sigmaOmega objectAtIndex:1];
-
-    //sigma = [sigma multiply:knownErrors];
-
-    NSArray *errorLocations = [self findErrorLocations:sigma];
-    if (!errorLocations) return NO;
-    NSArray *errorMagnitudes = [self findErrorMagnitudes:omega errorLocator:sigma errorLocations:errorLocations];
-
-    for (int i = 0; i < errorLocations.count; i++) {
-      int position = received.count - 1 - [self.field log:[[errorLocations objectAtIndex:i] intValue]];
-      if (position < 0) {
-        return NO;
-      }
-      [received replaceObjectAtIndex:position
-                          withObject:[NSNumber numberWithInt:[self.field subtract:[[received objectAtIndex:position] intValue]
-                                                                                b:[[errorMagnitudes objectAtIndex:i] intValue]]]];
-    }
+  if (!error) {
+    return 0;
   }
 
-  return YES;
+  ZXModulusPoly *knownErrors = self.field.one;
+  for (int i = 0; i < erasures.length; i++) {
+    int erasure = erasures.array[i];
+    int b = [self.field exp:received.length - 1 - erasure];
+    // Add (1 - bx) term:
+    ZXModulusPoly *term = [[ZXModulusPoly alloc] initWithField:self.field coefficients:[[ZXIntArray alloc] initWithInts:[self.field subtract:0 b:b], 1, -1]];
+    knownErrors = [knownErrors multiply:term];
+  }
+
+  ZXModulusPoly *syndrome = [[ZXModulusPoly alloc] initWithField:self.field coefficients:S];
+  //[syndrome multiply:knownErrors];
+
+  NSArray *sigmaOmega = [self runEuclideanAlgorithm:[self.field buildMonomial:numECCodewords coefficient:1] b:syndrome R:numECCodewords];
+  if (!sigmaOmega) {
+    return -1;
+  }
+
+  ZXModulusPoly *sigma = sigmaOmega[0];
+  ZXModulusPoly *omega = sigmaOmega[1];
+
+  //sigma = [sigma multiply:knownErrors];
+
+  ZXIntArray *errorLocations = [self findErrorLocations:sigma];
+  if (!errorLocations) return NO;
+  ZXIntArray *errorMagnitudes = [self findErrorMagnitudes:omega errorLocator:sigma errorLocations:errorLocations];
+
+  for (int i = 0; i < errorLocations.length; i++) {
+    int position = received.length - 1 - [self.field log:errorLocations.array[i]];
+    if (position < 0) {
+      return -1;
+    }
+    received.array[position] = [self.field subtract:received.array[position] b:errorMagnitudes.array[i]];
+  }
+
+  return errorLocations.length;
 }
 
 - (NSArray *)runEuclideanAlgorithm:(ZXModulusPoly *)a b:(ZXModulusPoly *)b R:(int)R {
@@ -141,7 +120,7 @@
     while (r.degree >= rLast.degree && !r.zero) {
       int degreeDiff = r.degree - rLast.degree;
       int scale = [self.field multiply:[r coefficient:r.degree] b:dltInverse];
-      q = [q add:[field buildMonomial:degreeDiff coefficient:scale]];
+      q = [q add:[self.field buildMonomial:degreeDiff coefficient:scale]];
       r = [r subtract:[rLast multiplyByMonomial:degreeDiff coefficient:scale]];
     }
 
@@ -156,45 +135,43 @@
   int inverse = [self.field inverse:sigmaTildeAtZero];
   ZXModulusPoly *sigma = [t multiplyScalar:inverse];
   ZXModulusPoly *omega = [r multiplyScalar:inverse];
-  return [NSArray arrayWithObjects:sigma, omega, nil];
+  return @[sigma, omega];
 }
 
-- (NSArray *)findErrorLocations:(ZXModulusPoly *)errorLocator {
+- (ZXIntArray *)findErrorLocations:(ZXModulusPoly *)errorLocator {
   // This is a direct application of Chien's search
   int numErrors = errorLocator.degree;
-  NSMutableArray *result = [NSMutableArray arrayWithCapacity:numErrors];
-  for (int i = 1; i < self.field.size && result.count < numErrors; i++) {
+  ZXIntArray *result = [[ZXIntArray alloc] initWithLength:numErrors];
+  int e = 0;
+  for (int i = 1; i < self.field.size && e < numErrors; i++) {
     if ([errorLocator evaluateAt:i] == 0) {
-      [result addObject:[NSNumber numberWithInt:[field inverse:i]]];
+      result.array[e] = [self.field inverse:i];
+      e++;
     }
   }
-  if (result.count != numErrors) {
+  if (e != numErrors) {
     return nil;
   }
   return result;
 }
 
-- (NSArray *)findErrorMagnitudes:(ZXModulusPoly *)errorEvaluator errorLocator:(ZXModulusPoly *)errorLocator errorLocations:(NSArray *)errorLocations {
+- (ZXIntArray *)findErrorMagnitudes:(ZXModulusPoly *)errorEvaluator errorLocator:(ZXModulusPoly *)errorLocator errorLocations:(ZXIntArray *)errorLocations {
   int errorLocatorDegree = errorLocator.degree;
-  int formalDerivativeCoefficients[errorLocatorDegree];
-  for (int i = 0; i < errorLocatorDegree; i++) {
-    formalDerivativeCoefficients[i] = 0;
-  }
-
+  ZXIntArray *formalDerivativeCoefficients = [[ZXIntArray alloc] initWithLength:errorLocatorDegree];
   for (int i = 1; i <= errorLocatorDegree; i++) {
-    formalDerivativeCoefficients[errorLocatorDegree - i] =
+    formalDerivativeCoefficients.array[errorLocatorDegree - i] =
       [self.field multiply:i b:[errorLocator coefficient:i]];
   }
-  ZXModulusPoly *formalDerivative = [[[ZXModulusPoly alloc] initWithField:self.field coefficients:formalDerivativeCoefficients coefficientsLen:errorLocatorDegree] autorelease];
+  ZXModulusPoly *formalDerivative = [[ZXModulusPoly alloc] initWithField:self.field coefficients:formalDerivativeCoefficients];
 
   // This is directly applying Forney's Formula
-  int s = errorLocations.count;
-  NSMutableArray *result = [NSMutableArray arrayWithCapacity:s];
+  int s = errorLocations.length;
+  ZXIntArray *result = [[ZXIntArray alloc] initWithLength:s];
   for (int i = 0; i < s; i++) {
-    int xiInverse = [self.field inverse:[[errorLocations objectAtIndex:i] intValue]];
+    int xiInverse = [self.field inverse:errorLocations.array[i]];
     int numerator = [self.field subtract:0 b:[errorEvaluator evaluateAt:xiInverse]];
     int denominator = [self.field inverse:[formalDerivative evaluateAt:xiInverse]];
-    [result addObject:[NSNumber numberWithInt:[self.field multiply:numerator b:denominator]]];
+    result.array[i] = [self.field multiply:numerator b:denominator];
   }
   return result;
 }

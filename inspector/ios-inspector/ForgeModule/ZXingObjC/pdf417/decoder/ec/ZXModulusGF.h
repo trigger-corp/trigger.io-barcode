@@ -16,10 +16,13 @@
 
 @class ZXModulusPoly;
 
+/**
+ * A field based on powers of a generator integer, modulo some modulus.
+ */
 @interface ZXModulusGF : NSObject
 
-@property (nonatomic, retain) ZXModulusPoly *one;
-@property (nonatomic, retain) ZXModulusPoly *zero;
+@property (nonatomic, strong, readonly) ZXModulusPoly *one;
+@property (nonatomic, strong, readonly) ZXModulusPoly *zero;
 
 + (ZXModulusGF *)PDF417_GF;
 

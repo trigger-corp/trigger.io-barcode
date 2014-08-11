@@ -16,26 +16,18 @@
 
 #import "ZXParsedResult.h"
 
-@interface ZXParsedResult ()
-
-@property (nonatomic) ZXParsedResultType type;
-
-@end
-
 @implementation ZXParsedResult
 
-@synthesize type;
-
-- (id)initWithType:(ZXParsedResultType)aType {
+- (id)initWithType:(ZXParsedResultType)type {
   if (self = [super init]) {
-    self.type = aType;
+    _type = type;
   }
 
   return self;
 }
 
 + (id)parsedResultWithType:(ZXParsedResultType)type {
-  return [[[self alloc] initWithType:type] autorelease];
+  return [[self alloc] initWithType:type];
 }
 
 - (NSString *)displayResult {
@@ -49,7 +41,8 @@
 }
 
 + (void)maybeAppend:(NSString *)value result:(NSMutableString *)result {
-  if (value != nil && [value length] > 0) {
+  if (value != nil && (id)value != [NSNull null] && [value length] > 0) {
+    // Don't add a newline before the first value
     if ([result length] > 0) {
       [result appendString:@"\n"];
     }

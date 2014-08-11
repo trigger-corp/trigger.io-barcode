@@ -16,46 +16,30 @@
 
 #import "ZXDecoderResult.h"
 
-@interface ZXDecoderResult ()
-
-@property (nonatomic, assign) unsigned char *rawBytes;
-@property (nonatomic, assign) int length;
-@property (nonatomic, copy) NSString *text;
-@property (nonatomic, retain) NSMutableArray *byteSegments;
-@property (nonatomic, copy) NSString *ecLevel;
-
-@end
-
 @implementation ZXDecoderResult
 
-@synthesize rawBytes;
-@synthesize length;
-@synthesize text;
-@synthesize byteSegments;
-@synthesize ecLevel;
+- (id)initWithRawBytes:(ZXByteArray *)rawBytes text:(NSString *)text
+          byteSegments:(NSMutableArray *)byteSegments ecLevel:(NSString *)ecLevel {
+  return [self initWithRawBytes:rawBytes text:text byteSegments:byteSegments ecLevel:ecLevel saSequence:-1 saParity:-1];
+}
 
-- (id)initWithRawBytes:(unsigned char *)theRawBytes
-                length:(unsigned int)aLength
-                  text:(NSString *)theText
-          byteSegments:(NSMutableArray *)theByteSegments
-               ecLevel:(NSString *)anEcLevel {
+- (id)initWithRawBytes:(ZXByteArray *)rawBytes text:(NSString *)text
+          byteSegments:(NSMutableArray *)byteSegments ecLevel:(NSString *)ecLevel
+            saSequence:(int)saSequence saParity:(int)saParity {
   if (self = [super init]) {
-    self.rawBytes = theRawBytes;
-    self.length = aLength;
-    self.text = theText;
-    self.byteSegments = theByteSegments;
-    self.ecLevel = anEcLevel;
+    _rawBytes = rawBytes;
+    _text = text;
+    _byteSegments = byteSegments;
+    _ecLevel = ecLevel;
+    _structuredAppendParity = saParity;
+    _structuredAppendSequenceNumber = saSequence;
   }
 
   return self;
 }
 
-- (void) dealloc {
-  [text release];
-  [byteSegments release];
-  [ecLevel release];
-
-  [super dealloc];
+- (BOOL)hasStructuredAppend {
+  return self.structuredAppendParity >= 0 && self.structuredAppendSequenceNumber >= 0;
 }
 
 @end

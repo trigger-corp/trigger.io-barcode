@@ -18,39 +18,74 @@
 
 @interface ZXAddressBookParsedResult : ZXParsedResult
 
-@property (nonatomic, readonly, retain) NSArray *names;
-@property (nonatomic, readonly, retain) NSArray *nicknames;
+@property (nonatomic, readonly, strong) NSArray *names;
+@property (nonatomic, readonly, strong) NSArray *nicknames;
+
+/**
+ * In Japanese, the name is written in kanji, which can have multiple readings. Therefore a hint
+ * is often provided, called furigana, which spells the name phonetically.
+ *
+ * @return The pronunciation of the names property, often in hiragana or katakana.
+ */
 @property (nonatomic, readonly, copy) NSString *pronunciation;
-@property (nonatomic, readonly, retain) NSArray *phoneNumbers;
-@property (nonatomic, readonly, retain) NSArray *phoneTypes;
-@property (nonatomic, readonly, retain) NSArray *emails;
-@property (nonatomic, readonly, retain) NSArray *emailTypes;
+
+@property (nonatomic, readonly, strong) NSArray *phoneNumbers;
+
+/**
+ * @return optional descriptions of the type of each phone number. It could be like "HOME", but,
+ *  there is no guaranteed or standard format.
+ */
+@property (nonatomic, readonly, strong) NSArray *phoneTypes;
+
+@property (nonatomic, readonly, strong) NSArray *emails;
+
+/**
+ * @return optional descriptions of the type of each e-mail. It could be like "WORK", but,
+ *  there is no guaranteed or standard format.
+ */
+@property (nonatomic, readonly, strong) NSArray *emailTypes;
+
 @property (nonatomic, readonly, copy) NSString *instantMessenger;
 @property (nonatomic, readonly, copy) NSString *note;
-@property (nonatomic, readonly, retain) NSArray *addresses;
-@property (nonatomic, readonly, retain) NSArray *addressTypes;
+@property (nonatomic, readonly, strong) NSArray *addresses;
+
+/**
+ * @return optional descriptions of the type of each e-mail. It could be like "WORK", but,
+ *  there is no guaranteed or standard format.
+ */
+@property (nonatomic, readonly, strong) NSArray *addressTypes;
+
 @property (nonatomic, readonly, copy) NSString *title;
 @property (nonatomic, readonly, copy) NSString *org;
-@property (nonatomic, readonly, retain) NSArray *urls;
+@property (nonatomic, readonly, strong) NSArray *urls;
+
+/**
+ * @return birthday formatted as yyyyMMdd (e.g. 19780917)
+ */
 @property (nonatomic, readonly, copy) NSString *birthday;
-@property (nonatomic, readonly, retain) NSArray *geo;
+
+/**
+ * @return a location as a latitude/longitude pair
+ */
+@property (nonatomic, readonly, strong) NSArray *geo;
 
 - (id)initWithNames:(NSArray *)names phoneNumbers:(NSArray *)phoneNumbers
          phoneTypes:(NSArray *)phoneTypes emails:(NSArray *)emails emailTypes:(NSArray *)emailTypes
           addresses:(NSArray *)addresses addressTypes:(NSArray *)addressTypes;
 
 - (id)initWithNames:(NSArray *)names nicknames:(NSArray *)nicknames pronunciation:(NSString *)pronunciation
-       phoneNumbers:(NSArray *)phoneNumbers phoneTypes:(NSArray *)phoneTypes emails:(NSArray *)emails emailTypes:(NSArray *)emailTypes
-   instantMessenger:(NSString *)instantMessenger note:(NSString *)note addresses:(NSArray *)addresses
-       addressTypes:(NSArray *)addressTypes org:(NSString *)org birthday:(NSString *)birthday
-              title:(NSString *)title urls:(NSArray *)urls geo:(NSArray *)geo;
+       phoneNumbers:(NSArray *)phoneNumbers phoneTypes:(NSArray *)phoneTypes emails:(NSArray *)emails
+         emailTypes:(NSArray *)emailTypes instantMessenger:(NSString *)instantMessenger note:(NSString *)note
+          addresses:(NSArray *)addresses addressTypes:(NSArray *)addressTypes org:(NSString *)org
+           birthday:(NSString *)birthday title:(NSString *)title urls:(NSArray *)urls geo:(NSArray *)geo;
 
 + (id)addressBookParsedResultWithNames:(NSArray *)names phoneNumbers:(NSArray *)phoneNumbers
                             phoneTypes:(NSArray *)phoneTypes emails:(NSArray *)emails emailTypes:(NSArray *)emailTypes
                              addresses:(NSArray *)addresses addressTypes:(NSArray *)addressTypes;
 
-+ (id)addressBookParsedResultWithNames:(NSArray *)names nicknames:(NSArray *)nicknames pronunciation:(NSString *)pronunciation
-                          phoneNumbers:(NSArray *)phoneNumbers phoneTypes:(NSArray *)phoneTypes emails:(NSArray *)emails emailTypes:(NSArray *)emailTypes
++ (id)addressBookParsedResultWithNames:(NSArray *)names nicknames:(NSArray *)nicknames
+                         pronunciation:(NSString *)pronunciation phoneNumbers:(NSArray *)phoneNumbers
+                            phoneTypes:(NSArray *)phoneTypes emails:(NSArray *)emails emailTypes:(NSArray *)emailTypes
                       instantMessenger:(NSString *)instantMessenger note:(NSString *)note addresses:(NSArray *)addresses
                           addressTypes:(NSArray *)addressTypes org:(NSString *)org birthday:(NSString *)birthday
                                  title:(NSString *)title urls:(NSArray *)urls geo:(NSArray *)geo;

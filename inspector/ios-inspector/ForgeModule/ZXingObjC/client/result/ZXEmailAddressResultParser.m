@@ -25,8 +25,9 @@
   NSString *rawText = [ZXResultParser massagedText:result];
   NSString *emailAddress;
   if ([rawText hasPrefix:@"mailto:"] || [rawText hasPrefix:@"MAILTO:"]) {
+    // If it starts with mailto:, assume it is definitely trying to be an email address
     emailAddress = [rawText substringFromIndex:7];
-    int queryStart = [emailAddress rangeOfString:@"?"].location;
+    NSUInteger queryStart = [emailAddress rangeOfString:@"?"].location;
     if (queryStart != NSNotFound) {
       emailAddress = [emailAddress substringToIndex:queryStart];
     }
@@ -36,10 +37,10 @@
     NSString *body = nil;
     if (nameValues != nil) {
       if ([emailAddress length] == 0) {
-        emailAddress = [nameValues objectForKey:@"to"];
+        emailAddress = nameValues[@"to"];
       }
-      subject = [nameValues objectForKey:@"subject"];
-      body = [nameValues objectForKey:@"body"];
+      subject = nameValues[@"subject"];
+      body = nameValues[@"body"];
     }
     return [ZXEmailAddressParsedResult emailAddressParsedResultWithEmailAddress:emailAddress
                                                                         subject:subject

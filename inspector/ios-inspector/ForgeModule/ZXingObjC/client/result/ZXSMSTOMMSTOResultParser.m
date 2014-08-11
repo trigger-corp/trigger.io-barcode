@@ -25,9 +25,11 @@
   if (!([rawText hasPrefix:@"smsto:"] || [rawText hasPrefix:@"SMSTO:"] || [rawText hasPrefix:@"mmsto:"] || [rawText hasPrefix:@"MMSTO:"])) {
     return nil;
   }
+  // Thanks to dominik.wild for suggesting this enhancement to support
+  // smsto:number:body URIs
   NSString *number = [rawText substringFromIndex:6];
   NSString *body = nil;
-  int bodyStart = [number rangeOfString:@":"].location;
+  NSUInteger bodyStart = [number rangeOfString:@":"].location;
   if (bodyStart != NSNotFound) {
     body = [number substringFromIndex:bodyStart + 1];
     number = [number substringToIndex:bodyStart];

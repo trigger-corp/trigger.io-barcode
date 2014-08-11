@@ -17,18 +17,12 @@
 #import "ZXBitMatrix.h"
 #import "ZXByteMatrix.h"
 #import "ZXEncodeHints.h"
-#import "ZXEncoder.h"
-#import "ZXErrorCorrectionLevel.h"
 #import "ZXQRCode.h"
+#import "ZXQRCodeEncoder.h"
+#import "ZXQRCodeErrorCorrectionLevel.h"
 #import "ZXQRCodeWriter.h"
 
-int const QUIET_ZONE_SIZE = 4;
-
-@interface ZXQRCodeWriter ()
-
-- (ZXBitMatrix *)renderResult:(ZXQRCode *)code width:(int)width height:(int)height quietZone:(int)quietZone;
-
-@end
+const int ZX_QUIET_ZONE_SIZE = 4;
 
 @implementation ZXQRCodeWriter
 
@@ -49,8 +43,8 @@ int const QUIET_ZONE_SIZE = 4;
     [NSException raise:NSInvalidArgumentException format:@"Requested dimensions are too small: %dx%d", width, height];
   }
 
-  ZXErrorCorrectionLevel *errorCorrectionLevel = [ZXErrorCorrectionLevel errorCorrectionLevelL];
-  int quietZone = QUIET_ZONE_SIZE;
+  ZXQRCodeErrorCorrectionLevel *errorCorrectionLevel = [ZXQRCodeErrorCorrectionLevel errorCorrectionLevelL];
+  int quietZone = ZX_QUIET_ZONE_SIZE;
   if (hints != nil) {
     if (hints.errorCorrectionLevel) {
       errorCorrectionLevel = hints.errorCorrectionLevel;
@@ -60,7 +54,7 @@ int const QUIET_ZONE_SIZE = 4;
     }
   }
 
-  ZXQRCode *code = [ZXEncoder encode:contents ecLevel:errorCorrectionLevel hints:hints error:error];
+  ZXQRCode *code = [ZXQRCodeEncoder encode:contents ecLevel:errorCorrectionLevel hints:hints error:error];
   return [self renderResult:code width:width height:height quietZone:quietZone];
 }
 
@@ -84,7 +78,7 @@ int const QUIET_ZONE_SIZE = 4;
   int leftPadding = (outputWidth - (inputWidth * multiple)) / 2;
   int topPadding = (outputHeight - (inputHeight * multiple)) / 2;
 
-  ZXBitMatrix *output = [[[ZXBitMatrix alloc] initWithWidth:outputWidth height:outputHeight] autorelease];
+  ZXBitMatrix *output = [[ZXBitMatrix alloc] initWithWidth:outputWidth height:outputHeight];
 
   for (int inputY = 0, outputY = topPadding; inputY < inputHeight; inputY++, outputY += multiple) {
     for (int inputX = 0, outputX = leftPadding; inputX < inputWidth; inputX++, outputX += multiple) {

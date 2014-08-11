@@ -51,10 +51,10 @@
                   transform:(ZXPerspectiveTransform *)transform
                       error:(NSError **)error {
   if (dimensionX <= 0 || dimensionY <= 0) {
-    if (error) *error = NotFoundErrorInstance();
+    if (error) *error = ZXNotFoundErrorInstance();
     return nil;
   }
-  ZXBitMatrix *bits = [[[ZXBitMatrix alloc] initWithWidth:dimensionX height:dimensionY] autorelease];
+  ZXBitMatrix *bits = [[ZXBitMatrix alloc] initWithWidth:dimensionX height:dimensionY];
   int pointsLen = dimensionX << 1;
   float pointsf[pointsLen];
   memset(pointsf, 0, pointsLen * sizeof(float));
@@ -75,7 +75,7 @@
       int xx = (int)pointsf[x];
       int yy = (int)pointsf[x + 1];
       if (xx < 0 || yy < 0 || xx >= image.width || yy >= image.height) {
-        if (error) *error = NotFoundErrorInstance();
+        if (error) *error = ZXNotFoundErrorInstance();
         return nil;
       }
 

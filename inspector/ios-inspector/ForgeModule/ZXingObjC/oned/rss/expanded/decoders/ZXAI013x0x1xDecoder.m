@@ -17,60 +17,48 @@
 #import "ZXAI013x0x1xDecoder.h"
 #import "ZXBitArray.h"
 #import "ZXErrors.h"
-#import "ZXGeneralAppIdDecoder.h"
+#import "ZXRSSExpandedGeneralAppIdDecoder.h"
 
-int const AI013x0x1x_HEADER_SIZE = 7 + 1;
-int const AI013x0x1x_WEIGHT_SIZE = 20;
-int const AI013x0x1x_DATE_SIZE = 16;
+const int ZX_AI013x0x1x_HEADER_SIZE = 7 + 1;
+const int ZX_AI013x0x1x_WEIGHT_SIZE = 20;
+const int ZX_AI013x0x1x_DATE_SIZE = 16;
 
 @interface ZXAI013x0x1xDecoder ()
 
-@property (nonatomic, copy) NSString *dateCode;
-@property (nonatomic, copy) NSString *firstAIdigits;
-
-- (void)encodeCompressedDate:(NSMutableString *)buf currentPos:(int)currentPos;
+@property (nonatomic, copy, readonly) NSString *dateCode;
+@property (nonatomic, copy, readonly) NSString *firstAIdigits;
 
 @end
 
 @implementation ZXAI013x0x1xDecoder
 
-@synthesize dateCode;
-@synthesize firstAIdigits;
-
-- (id)initWithInformation:(ZXBitArray *)anInformation firstAIdigits:(NSString *)aFirstAIdigits dateCode:(NSString *)aDateCode {
-  if (self = [super initWithInformation:anInformation]) {
-    self.dateCode = aDateCode;
-    self.firstAIdigits = aFirstAIdigits;
+- (id)initWithInformation:(ZXBitArray *)information firstAIdigits:(NSString *)firstAIdigits dateCode:(NSString *)dateCode {
+  if (self = [super initWithInformation:information]) {
+    _dateCode = dateCode;
+    _firstAIdigits = firstAIdigits;
   }
 
   return self;
 }
 
-- (void)dealloc {
-  [dateCode release];
-  [firstAIdigits release];
-
-  [super dealloc];
-}
-
 - (NSString *)parseInformationWithError:(NSError **)error {
-  if (self.information.size != AI013x0x1x_HEADER_SIZE + GTIN_SIZE + AI013x0x1x_WEIGHT_SIZE + AI013x0x1x_DATE_SIZE) {
-    if (error) *error = NotFoundErrorInstance();
+  if (self.information.size != ZX_AI013x0x1x_HEADER_SIZE + ZX_AI01_GTIN_SIZE + ZX_AI013x0x1x_WEIGHT_SIZE + ZX_AI013x0x1x_DATE_SIZE) {
+    if (error) *error = ZXNotFoundErrorInstance();
     return nil;
   }
   NSMutableString *buf = [NSMutableString string];
-  [self encodeCompressedGtin:buf currentPos:AI013x0x1x_HEADER_SIZE];
-  [self encodeCompressedWeight:buf currentPos:AI013x0x1x_HEADER_SIZE + GTIN_SIZE weightSize:AI013x0x1x_WEIGHT_SIZE];
-  [self encodeCompressedDate:buf currentPos:AI013x0x1x_HEADER_SIZE + GTIN_SIZE + AI013x0x1x_WEIGHT_SIZE];
+  [self encodeCompressedGtin:buf currentPos:ZX_AI013x0x1x_HEADER_SIZE];
+  [self encodeCompressedWeight:buf currentPos:ZX_AI013x0x1x_HEADER_SIZE + ZX_AI01_GTIN_SIZE weightSize:ZX_AI013x0x1x_WEIGHT_SIZE];
+  [self encodeCompressedDate:buf currentPos:ZX_AI013x0x1x_HEADER_SIZE + ZX_AI01_GTIN_SIZE + ZX_AI013x0x1x_WEIGHT_SIZE];
   return buf;
 }
 
 - (void)encodeCompressedDate:(NSMutableString *)buf currentPos:(int)currentPos {
-  int numericDate = [self.generalDecoder extractNumericValueFromBitArray:currentPos bits:AI013x0x1x_DATE_SIZE];
+  int numericDate = [self.generalDecoder extractNumericValueFromBitArray:currentPos bits:ZX_AI013x0x1x_DATE_SIZE];
   if (numericDate == 38400) {
     return;
   }
-  [buf appendFormat:@"(%@)", dateCode];
+  [buf appendFormat:@"(%@)", self.dateCode];
   int day = numericDate % 32;
   numericDate /= 32;
   int month = numericDate % 12 + 1;
@@ -92,7 +80,7 @@ int const AI013x0x1x_DATE_SIZE = 16;
 
 - (void)addWeightCode:(NSMutableString *)buf weight:(int)weight {
   int lastAI = weight / 100000;
-  [buf appendFormat:@"(%@%d)", firstAIdigits, lastAI];
+  [buf appendFormat:@"(%@%d)", self.firstAIdigits, lastAI];
 }
 
 - (int)checkWeight:(int)weight {

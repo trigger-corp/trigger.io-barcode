@@ -17,6 +17,7 @@
 #import "ZXBarcodeFormat.h"
 #import "ZXBitArray.h"
 #import "ZXErrors.h"
+#import "ZXIntArray.h"
 #import "ZXResult.h"
 #import "ZXResultMetadataType.h"
 #import "ZXResultPoint.h"
@@ -25,11 +26,19 @@
 
 @interface ZXUPCEANExtension2Support ()
 
-- (NSMutableDictionary *)parseExtensionString:(NSString *)raw;
+@property (nonatomic, strong, readonly) ZXIntArray *decodeMiddleCounters;
 
 @end
 
 @implementation ZXUPCEANExtension2Support
+
+- (id)init {
+  if (self = [super init]) {
+    _decodeMiddleCounters = [[ZXIntArray alloc] initWithLength:4];
+  }
+
+  return self;
+}
 
 - (ZXResult *)decodeRow:(int)rowNumber row:(ZXBitArray *)row extensionStartRange:(NSRange)extensionStartRange error:(NSError **)error {
   NSMutableString *resultString = [NSMutableString string];
@@ -40,13 +49,11 @@
 
   NSMutableDictionary *extensionData = [self parseExtensionString:resultString];
 
-  ZXResult *extensionResult = [[[ZXResult alloc] initWithText:resultString
+  ZXResult *extensionResult = [[ZXResult alloc] initWithText:resultString
                                                      rawBytes:nil
-                                                       length:0
-                                                 resultPoints:[NSArray arrayWithObjects:
-                                                               [[[ZXResultPoint alloc] initWithX:(extensionStartRange.location + NSMaxRange(extensionStartRange)) / 2.0f y:rowNumber] autorelease],
-                                                               [[[ZXResultPoint alloc] initWithX:end y:rowNumber] autorelease], nil]
-                                                       format:kBarcodeFormatUPCEANExtension] autorelease];
+                                                 resultPoints:@[[[ZXResultPoint alloc] initWithX:(extensionStartRange.location + NSMaxRange(extensionStartRange)) / 2.0f y:rowNumber],
+                                                                [[ZXResultPoint alloc] initWithX:end y:rowNumber]]
+                                                       format:kBarcodeFormatUPCEANExtension];
   if (extensionData != nil) {
     [extensionResult putAllMetadata:extensionData];
   }
@@ -54,24 +61,20 @@
 }
 
 - (int)decodeMiddle:(ZXBitArray *)row startRange:(NSRange)startRange result:(NSMutableString *)result error:(NSError **)error {
-  const int countersLen = 4;
-  int counters[countersLen];
-  memset(counters, 0, countersLen * sizeof(int));
-
+  ZXIntArray *counters = self.decodeMiddleCounters;
+  [counters clear];
   int end = [row size];
-  int rowOffset = NSMaxRange(startRange);
+  int rowOffset = (int)NSMaxRange(startRange);
 
   int checkParity = 0;
 
   for (int x = 0; x < 2 && rowOffset < end; x++) {
-    int bestMatch = [ZXUPCEANReader decodeDigit:row counters:counters countersLen:countersLen rowOffset:rowOffset patternType:UPC_EAN_PATTERNS_L_AND_G_PATTERNS error:error];
+    int bestMatch = [ZXUPCEANReader decodeDigit:row counters:counters rowOffset:rowOffset patternType:ZX_UPC_EAN_PATTERNS_L_AND_G_PATTERNS error:error];
     if (bestMatch == -1) {
       return -1;
     }
     [result appendFormat:@"%C", (unichar)('0' + bestMatch % 10)];
-    for (int i = 0; i < countersLen; i++) {
-      rowOffset += counters[i];
-    }
+    rowOffset += [counters sum];
     if (bestMatch >= 10) {
       checkParity |= 1 << (1 - x);
     }
@@ -83,24 +86,29 @@
   }
 
   if (result.length != 2) {
-    if (error) *error = NotFoundErrorInstance();
+    if (error) *error = ZXNotFoundErrorInstance();
     return -1;
   }
 
   if ([result intValue] % 4 != checkParity) {
-    if (error) *error = NotFoundErrorInstance();
+    if (error) *error = ZXNotFoundErrorInstance();
     return -1;
   }
 
   return rowOffset;
 }
 
+/**
+ * @param raw raw content of extension
+ * @return formatted interpretation of raw content as a NSDictionary mapping
+ *  one ZXResultMetadataType to appropriate value, or nil if not known
+ */
 - (NSMutableDictionary *)parseExtensionString:(NSString *)raw {
   if (raw.length != 2) {
     return nil;
   }
-  return [NSMutableDictionary dictionaryWithObject:[NSNumber numberWithInt:[raw intValue]]
-                                            forKey:[NSNumber numberWithInt:kResultMetadataTypeIssueNumber]];
+  return [NSMutableDictionary dictionaryWithObject:@([raw intValue])
+                                            forKey:@(kResultMetadataTypeIssueNumber)];
 }
 
 @end

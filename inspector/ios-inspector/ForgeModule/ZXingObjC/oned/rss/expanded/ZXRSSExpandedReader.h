@@ -16,16 +16,12 @@
 
 #import "ZXAbstractRSSReader.h"
 
-@class ZXDataCharacter, ZXExpandedPair, ZXResult, ZXRSSFinderPattern;
+@class ZXRSSDataCharacter, ZXRSSFinderPattern;
 
 @interface ZXRSSExpandedReader : ZXAbstractRSSReader
 
-- (ZXDataCharacter *)decodeDataCharacter:(ZXBitArray *)row pattern:(ZXRSSFinderPattern *)pattern isOddPattern:(BOOL)isOddPattern leftChar:(BOOL)leftChar;
+@property (nonatomic, strong, readonly) NSMutableArray *rows;
 
-// for tests
-- (NSMutableArray *)decodeRow2pairs:(int)rowNumber row:(ZXBitArray *)row;
-- (ZXResult *)constructResult:(NSMutableArray *)pairs error:(NSError **)error;
-- (NSMutableArray *)rows;
-- (ZXExpandedPair *)retrieveNextPair:(ZXBitArray *)row previousPairs:(NSMutableArray *)previousPairs rowNumber:(int)rowNumber;
+- (ZXRSSDataCharacter *)decodeDataCharacter:(ZXBitArray *)row pattern:(ZXRSSFinderPattern *)pattern isOddPattern:(BOOL)isOddPattern leftChar:(BOOL)leftChar;
 
 @end

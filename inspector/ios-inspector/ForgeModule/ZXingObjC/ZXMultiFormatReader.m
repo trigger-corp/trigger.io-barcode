@@ -28,53 +28,49 @@
 
 @interface ZXMultiFormatReader ()
 
-@property (nonatomic, retain) NSMutableArray *readers;
-
-- (ZXResult *)decodeInternal:(ZXBinaryBitmap *)image error:(NSError **)error;
+@property (nonatomic, strong, readonly) NSMutableArray *readers;
 
 @end
 
 @implementation ZXMultiFormatReader
 
-@synthesize hints;
-@synthesize readers;
-
 - (id)init {
   if (self = [super init]) {
-    self.readers = [NSMutableArray array];
+    _readers = [NSMutableArray array];
   }
 
   return self;
 }
 
 + (id)reader {
-  return [[[ZXMultiFormatReader alloc] init] autorelease];
+  return [[ZXMultiFormatReader alloc] init];
 }
 
 /**
  * This version of decode honors the intent of Reader.decode(BinaryBitmap) in that it
  * passes null as a hint to the decoders. However, that makes it inefficient to call repeatedly.
  * Use setHints() followed by decodeWithState() for continuous scan applications.
+ *
+ * @param image The pixel data to decode
+ * @return The contents of the image or nil if any errors occurred
  */
 - (ZXResult *)decode:(ZXBinaryBitmap *)image error:(NSError **)error {
   self.hints = nil;
   return [self decodeInternal:image error:error];
 }
 
-
 /**
  * Decode an image using the hints provided. Does not honor existing state.
+ *
+ * @param image The pixel data to decode
+ * @param hints The hints to use, clearing the previous state.
+ * @return The contents of the image or nil if any errors occurred
  */
-- (ZXResult *)decode:(ZXBinaryBitmap *)image hints:(ZXDecodeHints *)_hints error:(NSError **)error {
-  self.hints = _hints;
+- (ZXResult *)decode:(ZXBinaryBitmap *)image hints:(ZXDecodeHints *)hints error:(NSError **)error {
+  self.hints = hints;
   return [self decodeInternal:image error:error];
 }
 
-
-/**
- * Decode an image using the state set up by calling setHints() previously. Continuous scan
- * clients will get a <b>large</b> speed increase by using this instead of decode().
- */
 - (ZXResult *)decodeWithState:(ZXBinaryBitmap *)image error:(NSError **)error {
   if (self.readers == nil) {
     self.hints = nil;
@@ -82,18 +78,18 @@
   return [self decodeInternal:image error:error];
 }
 
-
 /**
- * This method adds state to the ZXMultiFormatReader. By setting the hints once, subsequent calls
+ * This method adds state to the MultiFormatReader. By setting the hints once, subsequent calls
  * to decodeWithState(image) can reuse the same set of readers without reallocating memory. This
  * is important for performance in continuous scan clients.
+ *
+ * @param hints The set of hints to use for subsequent calls to decode(image)
  */
-- (void)setHints:(ZXDecodeHints *)_hints {
-  [hints release];
-  hints = [_hints retain];
+- (void)setHints:(ZXDecodeHints *)hints {
+  _hints = hints;
 
   BOOL tryHarder = hints != nil && hints.tryHarder;
-  self.readers = [NSMutableArray array];
+  [self.readers removeAllObjects];
   if (hints != nil) {
     BOOL addZXOneDReader = [hints containsFormat:kBarcodeFormatUPCA] ||
       [hints containsFormat:kBarcodeFormatUPCE] ||
@@ -107,38 +103,38 @@
       [hints containsFormat:kBarcodeFormatRSS14] ||
       [hints containsFormat:kBarcodeFormatRSSExpanded];
     if (addZXOneDReader && !tryHarder) {
-      [self.readers addObject:[[[ZXMultiFormatOneDReader alloc] initWithHints:hints] autorelease]];
+      [self.readers addObject:[[ZXMultiFormatOneDReader alloc] initWithHints:hints]];
     }
     if ([hints containsFormat:kBarcodeFormatQRCode]) {
-      [self.readers addObject:[[[ZXQRCodeReader alloc] init] autorelease]];
+      [self.readers addObject:[[ZXQRCodeReader alloc] init]];
     }
     if ([hints containsFormat:kBarcodeFormatDataMatrix]) {
-      [self.readers addObject:[[[ZXDataMatrixReader alloc] init] autorelease]];
+      [self.readers addObject:[[ZXDataMatrixReader alloc] init]];
     }
     if ([hints containsFormat:kBarcodeFormatAztec]) {
-      [self.readers addObject:[[[ZXAztecReader alloc] init] autorelease]];
+      [self.readers addObject:[[ZXAztecReader alloc] init]];
     }
     if ([hints containsFormat:kBarcodeFormatPDF417]) {
-      [self.readers addObject:[[[ZXPDF417Reader alloc] init] autorelease]];
+      [self.readers addObject:[[ZXPDF417Reader alloc] init]];
     }
     if ([hints containsFormat:kBarcodeFormatMaxiCode]) {
-      [self.readers addObject:[[[ZXMaxiCodeReader alloc] init] autorelease]];
+      [self.readers addObject:[[ZXMaxiCodeReader alloc] init]];
     }
     if (addZXOneDReader && tryHarder) {
-      [self.readers addObject:[[[ZXMultiFormatOneDReader alloc] initWithHints:hints] autorelease]];
+      [self.readers addObject:[[ZXMultiFormatOneDReader alloc] initWithHints:hints]];
     }
   }
   if ([self.readers count] == 0) {
     if (!tryHarder) {
-      [self.readers addObject:[[[ZXMultiFormatOneDReader alloc] initWithHints:hints] autorelease]];
+      [self.readers addObject:[[ZXMultiFormatOneDReader alloc] initWithHints:hints]];
     }
-    [self.readers addObject:[[[ZXQRCodeReader alloc] init] autorelease]];
-    [self.readers addObject:[[[ZXDataMatrixReader alloc] init] autorelease]];
-    [self.readers addObject:[[[ZXAztecReader alloc] init] autorelease]];
-    [self.readers addObject:[[[ZXPDF417Reader alloc] init] autorelease]];
-    [self.readers addObject:[[[ZXMaxiCodeReader alloc] init] autorelease]];
+    [self.readers addObject:[[ZXQRCodeReader alloc] init]];
+    [self.readers addObject:[[ZXDataMatrixReader alloc] init]];
+    [self.readers addObject:[[ZXAztecReader alloc] init]];
+    [self.readers addObject:[[ZXPDF417Reader alloc] init]];
+    [self.readers addObject:[[ZXMaxiCodeReader alloc] init]];
     if (tryHarder) {
-      [self.readers addObject:[[[ZXMultiFormatOneDReader alloc] initWithHints:hints] autorelease]];
+      [self.readers addObject:[[ZXMultiFormatOneDReader alloc] initWithHints:hints]];
     }
   }
 }
@@ -161,15 +157,8 @@
     }
   }
 
-  if (error) *error = NotFoundErrorInstance();
+  if (error) *error = ZXNotFoundErrorInstance();
   return nil;
-}
-
-- (void)dealloc {
-  [hints release];
-  [readers release];
-
-  [super dealloc];
 }
 
 @end

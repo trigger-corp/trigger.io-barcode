@@ -16,22 +16,15 @@
 
 #import "ZXAI01decoder.h"
 #import "ZXBitArray.h"
-#import "ZXGeneralAppIdDecoder.h"
+#import "ZXRSSExpandedGeneralAppIdDecoder.h"
 
-int const GTIN_SIZE = 40;
-
-@interface ZXAI01decoder ()
-
-- (void)appendCheckDigit:(NSMutableString *)buf currentPos:(int)currentPos;
-
-@end
-
+const int ZX_AI01_GTIN_SIZE = 40;
 
 @implementation ZXAI01decoder
 
 - (void)encodeCompressedGtin:(NSMutableString *)buf currentPos:(int)currentPos {
   [buf appendString:@"(01)"];
-  int initialPosition = [buf length];
+  int initialPosition = (int)[buf length];
   [buf appendString:@"9"];
 
   [self encodeCompressedGtinWithoutAI:buf currentPos:currentPos initialBufferPosition:initialPosition];

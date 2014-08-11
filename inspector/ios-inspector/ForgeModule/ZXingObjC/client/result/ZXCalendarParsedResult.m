@@ -16,33 +16,10 @@
 
 #import "ZXCalendarParsedResult.h"
 
-@interface ZXCalendarParsedResult ()
+static NSRegularExpression *ZX_DATE_TIME = nil;
+static NSRegularExpression *ZX_RFC2445_DURATION = nil;
 
-@property(nonatomic, retain) NSString *summary;
-@property(nonatomic, retain) NSDate *start;
-@property(nonatomic) BOOL startAllDay;
-@property(nonatomic, retain) NSDate *end;
-@property(nonatomic) BOOL endAllDay;
-@property(nonatomic, retain) NSString *location;
-@property(nonatomic, retain) NSString *organizer;
-@property(nonatomic, retain) NSArray *attendees;
-@property(nonatomic, retain) NSString *description;
-@property(nonatomic) double latitude;
-@property(nonatomic) double longitude;
-
-- (NSDate *)parseDate:(NSString *)when;
-- (NSString *)format:(BOOL)allDay date:(NSDate *)date;
-- (long)parseDurationMS:(NSString *)durationString;
-
-@end
-
-static NSRegularExpression *DATE_TIME = nil;
-static NSRegularExpression *RFC2445_DURATION = nil;
-static NSDateFormatter *DATE_FORMAT = nil;
-static NSDateFormatter *DATE_TIME_FORMAT = nil;
-
-const int RFC2445_DURATION_FIELD_UNITS_LEN = 5;
-const long RFC2445_DURATION_FIELD_UNITS[RFC2445_DURATION_FIELD_UNITS_LEN] = {
+const long ZX_RFC2445_DURATION_FIELD_UNITS[] = {
   7 * 24 * 60 * 60 * 1000, // 1 week
   24 * 60 * 60 * 1000, // 1 day
   60 * 60 * 1000, // 1 hour
@@ -52,73 +29,58 @@ const long RFC2445_DURATION_FIELD_UNITS[RFC2445_DURATION_FIELD_UNITS_LEN] = {
 
 @implementation ZXCalendarParsedResult
 
-@synthesize summary;
-@synthesize start;
-@synthesize end;
-@synthesize location;
-@synthesize organizer;
-@synthesize attendees;
-@synthesize description;
-@synthesize latitude;
-@synthesize longitude;
-
 + (void)initialize {
-  DATE_TIME = [[NSRegularExpression alloc] initWithPattern:@"[0-9]{8}(T[0-9]{6}Z?)?"
-                                                   options:0
-                                                     error:nil];
+  ZX_DATE_TIME = [[NSRegularExpression alloc] initWithPattern:@"[0-9]{8}(T[0-9]{6}Z?)?"
+                                                      options:0
+                                                        error:nil];
 
-  RFC2445_DURATION = [[NSRegularExpression alloc] initWithPattern:@"P(?:(\\d+)W)?(?:(\\d+)D)?(?:T(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+)S)?)?"
-                                                          options:NSRegularExpressionCaseInsensitive
-                                                            error:nil];
+  ZX_RFC2445_DURATION = [[NSRegularExpression alloc] initWithPattern:@"P(?:(\\d+)W)?(?:(\\d+)D)?(?:T(?:(\\d+)H)?(?:(\\d+)M)?(?:(\\d+)S)?)?"
+                                                             options:NSRegularExpressionCaseInsensitive
+                                                               error:nil];
 
-  DATE_FORMAT = [[NSDateFormatter alloc] init];
-  DATE_FORMAT.dateFormat = @"yyyyMMdd";
-
-  DATE_TIME_FORMAT = [[NSDateFormatter alloc] init];
-  DATE_TIME_FORMAT.dateFormat = @"yyyyMMdd'T'HHmmss";
+//  ZX_DATE_FORMAT = [[NSDateFormatter alloc] init];
+//  ZX_DATE_FORMAT.dateFormat = @"yyyyMMdd";
+//
+//  ZX_DATE_TIME_FORMAT = [[NSDateFormatter alloc] init];
+//  ZX_DATE_TIME_FORMAT.dateFormat = @"yyyyMMdd'T'HHmmss";
 }
 
-- (id)initWithSummary:(NSString *)aSummary startString:(NSString *)aStartString endString:(NSString *)anEndString durationString:(NSString *)aDurationString
-             location:(NSString *)aLocation organizer:(NSString *)anOrganizer attendees:(NSArray *)anAttendees description:(NSString *)aDescription latitude:(double)aLatitude longitude:(double)aLongitude {
+- (id)initWithSummary:(NSString *)summary startString:(NSString *)startString endString:(NSString *)endString
+       durationString:(NSString *)durationString location:(NSString *)location organizer:(NSString *)organizer
+            attendees:(NSArray *)attendees description:(NSString *)description latitude:(double)latitude
+            longitude:(double)longitude {
   if (self = [super initWithType:kParsedResultTypeCalendar]) {
-    self.summary = aSummary;
-    self.start = [self parseDate:aStartString];
+    _summary = summary;
+    _start = [self parseDate:startString];
 
-    if (anEndString == nil) {
-      long durationMS = [self parseDurationMS:aDurationString];
-      self.end = durationMS < 0 ? nil : [NSDate dateWithTimeIntervalSince1970:[start timeIntervalSince1970] + durationMS / 1000];
+    if (endString == nil) {
+      long durationMS = [self parseDurationMS:durationString];
+      _end = durationMS < 0 ? nil : [NSDate dateWithTimeIntervalSince1970:[_start timeIntervalSince1970] + durationMS / 1000];
     } else {
-      self.end = [self parseDate:anEndString];
+      _end = [self parseDate:endString];
     }
 
-    self.startAllDay = aStartString.length == 8;
-    self.endAllDay = anEndString != nil && anEndString.length == 8;
+    _startAllDay = startString.length == 8;
+    _endAllDay = endString != nil && endString.length == 8;
 
-    self.location = aLocation;
-    self.organizer = anOrganizer;
-    self.attendees = anAttendees;
-    self.description = aDescription;
-    self.latitude = aLatitude;
-    self.longitude = aLongitude;
+    _location = location;
+    _organizer = organizer;
+    _attendees = attendees;
+    _resultDescription = description;
+    _latitude = latitude;
+    _longitude = longitude;
   }
   return self;
 }
 
-+ (id)calendarParsedResultWithSummary:(NSString *)summary startString:(NSString *)startString endString:(NSString *)endString durationString:(NSString *)durationString
-                             location:(NSString *)location organizer:(NSString *)organizer attendees:(NSArray *)attendees description:(NSString *)description latitude:(double)latitude longitude:(double)longitude {
-  return [[[self alloc] initWithSummary:summary startString:startString endString:endString durationString:durationString location:location organizer:organizer attendees:attendees
-                            description:description latitude:latitude longitude:longitude] autorelease];
-}
-
-- (void)dealloc {
-  [summary release];
-  [start release];
-  [end release];
-  [location release];
-  [organizer release];
-  [attendees release];
-  [description release];
-  [super dealloc];
++ (id)calendarParsedResultWithSummary:(NSString *)summary startString:(NSString *)startString
+                            endString:(NSString *)endString durationString:(NSString *)durationString
+                             location:(NSString *)location organizer:(NSString *)organizer
+                            attendees:(NSArray *)attendees description:(NSString *)description latitude:(double)latitude
+                            longitude:(double)longitude {
+  return [[self alloc] initWithSummary:summary startString:startString endString:endString durationString:durationString
+                              location:location organizer:organizer attendees:attendees description:description
+                              latitude:latitude longitude:longitude];
 }
 
 - (NSString *)displayResult {
@@ -133,26 +95,25 @@ const long RFC2445_DURATION_FIELD_UNITS[RFC2445_DURATION_FIELD_UNITS_LEN] = {
   return result;
 }
 
-
 /**
  * Parses a string as a date. RFC 2445 allows the start and end fields to be of type DATE (e.g. 20081021)
  * or DATE-TIME (e.g. 20081021T123000 for local time, or 20081021T123000Z for UTC).
  */
 - (NSDate *)parseDate:(NSString *)when {
-  NSArray *matches = [DATE_TIME matchesInString:when options:0 range:NSMakeRange(0, when.length)];
+  NSArray *matches = [ZX_DATE_TIME matchesInString:when options:0 range:NSMakeRange(0, when.length)];
   if (matches.count == 0) {
     [NSException raise:NSInvalidArgumentException
                 format:@"Invalid date"];
   }
   if (when.length == 8) {
     // Show only year/month/day
-    return [DATE_FORMAT dateFromString:when];
+    return [[self buildDateFormat] dateFromString:when];
   } else {
     // The when string can be local time, or UTC if it ends with a Z
     if (when.length == 16 && [when characterAtIndex:15] == 'Z') {
-      return [DATE_TIME_FORMAT dateFromString:[when substringToIndex:15]];
+      return [[self buildDateTimeFormat] dateFromString:[when substringToIndex:15]];
     } else {
-      return [DATE_TIME_FORMAT dateFromString:when];
+      return [[self buildDateTimeFormat] dateFromString:when];
     }
   }
 }
@@ -170,21 +131,37 @@ const long RFC2445_DURATION_FIELD_UNITS[RFC2445_DURATION_FIELD_UNITS_LEN] = {
   if (durationString == nil) {
     return -1;
   }
-  NSArray *m = [RFC2445_DURATION matchesInString:durationString options:0 range:NSMakeRange(0, durationString.length)];
+  NSArray *m = [ZX_RFC2445_DURATION matchesInString:durationString options:0 range:NSMakeRange(0, durationString.length)];
   if (m.count == 0) {
     return -1;
   }
   long durationMS = 0;
-  NSTextCheckingResult *match = [m objectAtIndex:0];
-  for (int i = 0; i < RFC2445_DURATION_FIELD_UNITS_LEN; i++) {
+  NSTextCheckingResult *match = m[0];
+  for (int i = 0; i < sizeof(ZX_RFC2445_DURATION_FIELD_UNITS) / sizeof(long); i++) {
     if ([match rangeAtIndex:i + 1].location != NSNotFound) {
       NSString *fieldValue = [durationString substringWithRange:[match rangeAtIndex:i + 1]];
       if (fieldValue != nil) {
-        durationMS += RFC2445_DURATION_FIELD_UNITS[i] * [fieldValue intValue];
+        durationMS += ZX_RFC2445_DURATION_FIELD_UNITS[i] * [fieldValue intValue];
       }
     }
   }
   return durationMS;
+}
+
+- (NSDateFormatter *)buildDateFormat {
+  NSDateFormatter *format = [[NSDateFormatter alloc] init];
+  format.dateFormat = @"yyyyMMdd";
+  return format;
+}
+
+- (NSDateFormatter *)buildDateTimeFormat {
+  NSDateFormatter *format = [[NSDateFormatter alloc] init];
+  format.dateFormat = @"yyyyMMdd'T'HHmmss";
+  return format;
+}
+
+- (NSString *)description {
+  return self.resultDescription;
 }
 
 @end

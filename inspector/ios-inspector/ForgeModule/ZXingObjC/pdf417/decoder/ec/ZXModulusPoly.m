@@ -14,97 +14,96 @@
  * limitations under the License.
  */
 
+#import "ZXIntArray.h"
 #import "ZXModulusGF.h"
 #import "ZXModulusPoly.h"
 
 @interface ZXModulusPoly ()
 
-@property (nonatomic, assign) int *coefficients;
-@property (nonatomic, assign) int coefficientsLen;
-@property (nonatomic, retain) ZXModulusGF *field;
+@property (nonatomic, strong, readonly) ZXIntArray *coefficients;
+@property (nonatomic, readonly) ZXModulusGF *field;
 
 @end
 
 @implementation ZXModulusPoly
 
-@synthesize coefficients;
-@synthesize coefficientsLen;
-@synthesize field;
-
-- (id)initWithField:(ZXModulusGF *)aField coefficients:(int *)aCoefficients coefficientsLen:(int)aCoefficientsLen {
+- (id)initWithField:(ZXModulusGF *)field coefficients:(ZXIntArray *)coefficients {
   if (self = [super init]) {
-    self.field = aField;
-    if (aCoefficientsLen > 1 && aCoefficients[0] == 0) {
+    if (coefficients.length == 0) {
+      @throw [NSException exceptionWithName:@"IllegalArgumentException"
+                                     reason:@"coefficients must have at least one element"
+                                   userInfo:nil];
+    }
+    _field = field;
+    int coefficientsLength = coefficients.length;
+    if (coefficientsLength > 1 && coefficients.array[0] == 0) {
       // Leading term must be non-zero for anything except the constant polynomial "0"
       int firstNonZero = 1;
-      while (firstNonZero < aCoefficientsLen && aCoefficients[firstNonZero] == 0) {
+      while (firstNonZero < coefficientsLength && coefficients.array[firstNonZero] == 0) {
         firstNonZero++;
       }
-      if (firstNonZero == aCoefficientsLen) {
-        ZXModulusPoly *zero = self.field.zero;
-        self.coefficients = (int *)malloc(zero.coefficientsLen * sizeof(int));
-        memcpy(self.coefficients, zero.coefficients, zero.coefficientsLen * sizeof(int));
+      if (firstNonZero == coefficientsLength) {
+        _coefficients = field.zero.coefficients;
       } else {
-        self.coefficientsLen = (aCoefficientsLen - firstNonZero);
-        self.coefficients = (int *)malloc(self.coefficientsLen * sizeof(int));
-        for (int i = 0; i < self.coefficientsLen; i++) {
-          self.coefficients[i] = aCoefficients[firstNonZero + i];
+        _coefficients = [[ZXIntArray alloc] initWithLength:coefficientsLength - firstNonZero];
+        for (int i = 0; i < _coefficients.length; i++) {
+          _coefficients.array[i] = coefficients.array[firstNonZero + i];
         }
       }
     } else {
-      self.coefficients = (int *)malloc(aCoefficientsLen * sizeof(int));
-      memcpy(self.coefficients, aCoefficients, aCoefficientsLen * sizeof(int));
-      self.coefficientsLen = aCoefficientsLen;
+      _coefficients = coefficients;
     }
   }
 
   return self;
 }
 
-- (void)dealloc {
-  if (self.coefficients != NULL) {
-    free(self.coefficients);
-    self.coefficients = NULL;
-  }
-  [field release];
-
-  [super dealloc];
-}
-
+/**
+ * @return degree of this polynomial
+ */
 - (int)degree {
-  return self.coefficientsLen - 1;
+  return self.coefficients.length - 1;
 }
 
+/**
+ * @return true iff this polynomial is the monomial "0"
+ */
 - (BOOL)zero {
-  return self.coefficients[0] == 0;
+  return self.coefficients.array[0] == 0;
 }
 
+/**
+ * @return coefficient of x^degree term in this polynomial
+ */
 - (int)coefficient:(int)degree {
-  return self.coefficients[self.coefficientsLen - 1 - degree];
+  return self.coefficients.array[self.coefficients.length - 1 - degree];
 }
 
+/**
+ * @return evaluation of this polynomial at a given point
+ */
 - (int)evaluateAt:(int)a {
   if (a == 0) {
     return [self coefficient:0];
   }
-  int size = self.coefficientsLen;
+  int size = self.coefficients.length;
   if (a == 1) {
     // Just the sum of the coefficients
     int result = 0;
     for (int i = 0; i < size; i++) {
-      result = [self.field add:result b:self.coefficients[i]];
+      result = [self.field add:result b:self.coefficients.array[i]];
     }
     return result;
   }
-  int result = self.coefficients[0];
+  int result = self.coefficients.array[0];
   for (int i = 1; i < size; i++) {
-    result = [self.field add:[self.field multiply:a b:result] b:self.coefficients[i]];
+    result = [self.field add:[self.field multiply:a b:result] b:self.coefficients.array[i]];
   }
   return result;
 }
 
 - (ZXModulusPoly *)add:(ZXModulusPoly *)other {
-  if (![self.field isEqual:other->field]) {
+  if (![self.field isEqual:other.field]) {
     [NSException raise:NSInvalidArgumentException format:@"ZXModulusPolys do not have same ZXModulusGF field"];
   }
   if (self.zero) {
@@ -114,32 +113,27 @@
     return self;
   }
 
-  int *smallerCoefficients = self.coefficients;
-  int smallerCoefficientsLen = self.coefficientsLen;
-  int *largerCoefficients = other.coefficients;
-  int largerCoefficientsLen = other.coefficientsLen;
-  if (smallerCoefficientsLen > largerCoefficientsLen) {
-    int *temp = smallerCoefficients;
-    int tempLen = smallerCoefficientsLen;
+  ZXIntArray *smallerCoefficients = self.coefficients;
+  ZXIntArray *largerCoefficients = other.coefficients;
+  if (smallerCoefficients.length > largerCoefficients.length) {
+    ZXIntArray *temp = smallerCoefficients;
     smallerCoefficients = largerCoefficients;
-    smallerCoefficientsLen = largerCoefficientsLen;
     largerCoefficients = temp;
-    largerCoefficientsLen = tempLen;
   }
-  int sumDiff[largerCoefficientsLen];
-  int lengthDiff = largerCoefficientsLen - smallerCoefficientsLen;
-  for (int i = 0; i < lengthDiff; i++) {
-    sumDiff[i] = largerCoefficients[i];
-  }
-  for (int i = lengthDiff; i < largerCoefficientsLen; i++) {
-    sumDiff[i] = [self.field add:smallerCoefficients[i - lengthDiff] b:largerCoefficients[i]];
+  ZXIntArray *sumDiff = [[ZXIntArray alloc] initWithLength:largerCoefficients.length];
+  int lengthDiff = largerCoefficients.length - smallerCoefficients.length;
+  // Copy high-order terms only found in higher-degree polynomial's coefficients
+  memcpy(sumDiff.array, largerCoefficients.array, lengthDiff * sizeof(int32_t));
+
+  for (int i = lengthDiff; i < largerCoefficients.length; i++) {
+    sumDiff.array[i] = [self.field add:smallerCoefficients.array[i - lengthDiff] b:largerCoefficients.array[i]];
   }
 
-  return [[[ZXModulusPoly alloc] initWithField:self.field coefficients:sumDiff coefficientsLen:largerCoefficientsLen] autorelease];
+  return [[ZXModulusPoly alloc] initWithField:self.field coefficients:sumDiff];
 }
 
 - (ZXModulusPoly *)subtract:(ZXModulusPoly *)other {
-  if (![self.field isEqual:other->field]) {
+  if (![self.field isEqual:other.field]) {
     [NSException raise:NSInvalidArgumentException format:@"ZXModulusPolys do not have same ZXModulusGF field"];
   }
   if (self.zero) {
@@ -149,37 +143,34 @@
 }
 
 - (ZXModulusPoly *)multiply:(ZXModulusPoly *)other {
-  if (![self.field isEqual:other->field]) {
+  if (![self.field isEqual:other.field]) {
     [NSException raise:NSInvalidArgumentException format:@"ZXModulusPolys do not have same ZXModulusGF field"];
   }
   if (self.zero || other.zero) {
     return self.field.zero;
   }
-  int *aCoefficients = self.coefficients;
-  int aLength = self.coefficientsLen;
-  int *bCoefficients = other.coefficients;
-  int bLength = other.coefficientsLen;
-  int productLen = aLength + bLength - 1;
-  int product[productLen];
-  memset(product, 0, productLen * sizeof(int));
-
+  ZXIntArray *aCoefficients = self.coefficients;
+  int aLength = aCoefficients.length;
+  ZXIntArray *bCoefficients = other.coefficients;
+  int bLength = bCoefficients.length;
+  ZXIntArray *product = [[ZXIntArray alloc] initWithLength:aLength + bLength - 1];
   for (int i = 0; i < aLength; i++) {
-    int aCoeff = aCoefficients[i];
+    int aCoeff = aCoefficients.array[i];
     for (int j = 0; j < bLength; j++) {
-      product[i + j] = [self.field add:product[i + j]
-                                     b:[self.field multiply:aCoeff b:bCoefficients[j]]];
+      product.array[i + j] = [self.field add:product.array[i + j]
+                                     b:[self.field multiply:aCoeff b:bCoefficients.array[j]]];
     }
   }
-  return [[[ZXModulusPoly alloc] initWithField:self.field coefficients:product coefficientsLen:productLen] autorelease];
+  return [[ZXModulusPoly alloc] initWithField:self.field coefficients:product];
 }
 
 - (ZXModulusPoly *)negative {
-  int negativeCoefficientsLen = self.coefficientsLen;
-  int negativeCoefficients[negativeCoefficientsLen];
-  for (int i = 0; i < self.coefficientsLen; i++) {
-    negativeCoefficients[i] = [self.field subtract:0 b:self.coefficients[i]];
+  int size = self.coefficients.length;
+  ZXIntArray *negativeCoefficients = [[ZXIntArray alloc] initWithLength:size];
+  for (int i = 0; i < size; i++) {
+    negativeCoefficients.array[i] = [self.field subtract:0 b:self.coefficients.array[i]];
   }
-  return [[[ZXModulusPoly alloc] initWithField:self.field coefficients:negativeCoefficients coefficientsLen:negativeCoefficientsLen] autorelease];
+  return [[ZXModulusPoly alloc] initWithField:self.field coefficients:negativeCoefficients];
 }
 
 - (ZXModulusPoly *)multiplyScalar:(int)scalar {
@@ -189,12 +180,12 @@
   if (scalar == 1) {
     return self;
   }
-  int size = self.coefficientsLen;
-  int product[size];
+  int size = self.coefficients.length;
+  ZXIntArray *product = [[ZXIntArray alloc] initWithLength:size];
   for (int i = 0; i < size; i++) {
-    product[i] = [self.field multiply:self.coefficients[i] b:scalar];
+    product.array[i] = [self.field multiply:self.coefficients.array[i] b:scalar];
   }
-  return [[[ZXModulusPoly alloc] initWithField:self.field coefficients:product coefficientsLen:size] autorelease];
+  return [[ZXModulusPoly alloc] initWithField:self.field coefficients:product];
 }
 
 - (ZXModulusPoly *)multiplyByMonomial:(int)degree coefficient:(int)coefficient {
@@ -204,21 +195,17 @@
   if (coefficient == 0) {
     return self.field.zero;
   }
-  int size = self.coefficientsLen;
-  int product[size + degree];
-  for (int i = 0; i < size + degree; i++) {
-    if (i < size) {
-      product[i] = [self.field multiply:self.coefficients[i] b:coefficient];
-    } else {
-      product[i] = 0;
-    }
+  int size = self.coefficients.length;
+  ZXIntArray *product = [[ZXIntArray alloc] initWithLength:size + degree];
+  for (int i = 0; i < size; i++) {
+    product.array[i] = [self.field multiply:self.coefficients.array[i] b:coefficient];
   }
 
-  return [[[ZXModulusPoly alloc] initWithField:self.field coefficients:product coefficientsLen:size + degree] autorelease];
+  return [[ZXModulusPoly alloc] initWithField:self.field coefficients:product];
 }
 
 - (NSArray *)divide:(ZXModulusPoly *)other {
-  if (![self.field isEqual:other->field]) {
+  if (![self.field isEqual:other.field]) {
     [NSException raise:NSInvalidArgumentException format:@"ZXModulusPolys do not have same ZXModulusGF field"];
   }
   if (other.zero) {
@@ -235,12 +222,12 @@
     int degreeDifference = remainder.degree - other.degree;
     int scale = [self.field multiply:[remainder coefficient:remainder.degree] b:inverseDenominatorLeadingTerm];
     ZXModulusPoly *term = [other multiplyByMonomial:degreeDifference coefficient:scale];
-    ZXModulusPoly *iterationQuotient = [field buildMonomial:degreeDifference coefficient:scale];
+    ZXModulusPoly *iterationQuotient = [self.field buildMonomial:degreeDifference coefficient:scale];
     quotient = [quotient add:iterationQuotient];
     remainder = [remainder subtract:term];
   }
 
-  return [NSArray arrayWithObjects:quotient, remainder, nil];
+  return @[quotient, remainder];
 }
 
 - (NSString *)description {

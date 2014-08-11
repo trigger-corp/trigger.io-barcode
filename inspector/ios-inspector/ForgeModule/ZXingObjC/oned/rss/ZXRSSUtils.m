@@ -14,16 +14,12 @@
  * limitations under the License.
  */
 
+#import "ZXIntArray.h"
 #import "ZXRSSUtils.h"
-
-@interface ZXRSSUtils ()
-
-+ (int)combins:(int)n r:(int)r;
-
-@end
 
 @implementation ZXRSSUtils
 
+/*
 + (NSArray *)rssWidths:(int)val n:(int)n elements:(int)elements maxWidth:(int)maxWidth noNarrow:(BOOL)noNarrow {
   NSMutableArray *widths = [NSMutableArray arrayWithCapacity:elements];
   int bar;
@@ -55,25 +51,26 @@
     }
     val += subVal;
     n -= elmWidth;
-    [widths addObject:[NSNumber numberWithInt:elmWidth]];
+    [widths addObject:@(elmWidth)];
   }
 
-  [widths addObject:[NSNumber numberWithInt:n]];
+  [widths addObject:@(n)];
   return widths;
 }
+*/
 
-+ (int)rssValue:(int *)widths widthsLen:(unsigned int)widthsLen maxWidth:(int)maxWidth noNarrow:(BOOL)noNarrow {
-  int elements = widthsLen;
++ (int)rssValue:(ZXIntArray *)widths maxWidth:(int)maxWidth noNarrow:(BOOL)noNarrow {
+  int elements = widths.length;
   int n = 0;
   for (int i = 0; i < elements; i++) {
-    n += widths[i];
+    n += widths.array[i];
   }
   int val = 0;
   int narrowMask = 0;
   for (int bar = 0; bar < elements - 1; bar++) {
     int elmWidth;
     for (elmWidth = 1, narrowMask |= 1 << bar;
-         elmWidth < widths[bar];
+         elmWidth < widths.array[bar];
          elmWidth++, narrowMask &= ~(1 << bar)) {
       int subVal = [self combins:n - elmWidth - 1 r:elements - bar - 2];
       if (noNarrow && (narrowMask == 0) &&
@@ -125,37 +122,35 @@
   return val;
 }
 
+/*
 + (NSArray *)elements:(NSArray *)eDist N:(int)N K:(int)K {
   NSMutableArray *widths = [NSMutableArray arrayWithCapacity:[eDist count] + 2];
   int twoK = K << 1;
-  [widths addObject:[NSNumber numberWithInt:1]];
+  [widths addObject:@1];
   int i;
   int minEven = 10;
   int barSum = 1;
   for (i = 1; i < twoK - 2; i += 2) {
-    [widths addObject:[NSNumber numberWithInt:
-                       [[eDist objectAtIndex:i - 1] intValue] - [[widths objectAtIndex:i - 1] intValue]]];
-    [widths addObject:[NSNumber numberWithInt:
-                       [[eDist objectAtIndex:i] intValue] - [[widths objectAtIndex:i] intValue]]];    
-    barSum += [[widths objectAtIndex:i] intValue] + [[widths objectAtIndex:i + 1] intValue];
-    if ([[widths objectAtIndex:i] intValue] < minEven) {
-      minEven = [[widths objectAtIndex:i] intValue];
+    [widths addObject:@([eDist[i - 1] intValue] - [widths[i - 1] intValue])];
+    [widths addObject:@([eDist[i] intValue] - [widths[i] intValue])];
+    barSum += [widths[i] intValue] + [widths[i + 1] intValue];
+    if ([widths[i] intValue] < minEven) {
+      minEven = [widths[i] intValue];
     }
   }
 
-  [widths addObject:[NSNumber numberWithInt:N - barSum]];
-  if ([[widths objectAtIndex:twoK - 1] intValue] < minEven) {
-    minEven = [[widths objectAtIndex:twoK - 1] intValue];
+  [widths addObject:@(N - barSum)];
+  if ([widths[twoK - 1] intValue] < minEven) {
+    minEven = [widths[twoK - 1] intValue];
   }
   if (minEven > 1) {
     for (i = 0; i < twoK; i += 2) {
-      [widths replaceObjectAtIndex:i
-                        withObject:[NSNumber numberWithInt:[[widths objectAtIndex:i] intValue] + minEven - 1]];
-      [widths replaceObjectAtIndex:i + 1
-                        withObject:[NSNumber numberWithInt:[[widths objectAtIndex:i + 1] intValue] - minEven - 1]];
+      widths[i] = @([widths[i] intValue] + minEven - 1);
+      widths[i + 1] = @([widths[i + 1] intValue] - minEven - 1);
     }
   }
   return widths;
 }
+*/
 
 @end

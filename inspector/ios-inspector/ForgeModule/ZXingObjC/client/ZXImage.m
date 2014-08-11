@@ -23,11 +23,9 @@
 
 @implementation ZXImage
 
-@synthesize cgimage;
-
 - (ZXImage *)initWithCGImageRef:(CGImageRef)image {
   if (self = [super init]) {
-    cgimage = CGImageRetain(image);
+    _cgimage = CGImageRetain(image);
   }
 
   return self;
@@ -35,14 +33,13 @@
 
 - (ZXImage *)initWithURL:(NSURL const *)url {
   if (self = [super init]) {
-    CGDataProviderRef provider = CGDataProviderCreateWithURL((CFURLRef)url);
+    CGDataProviderRef provider = CGDataProviderCreateWithURL((__bridge CFURLRef)url);
 
     if (provider) {
       CGImageSourceRef source = CGImageSourceCreateWithDataProvider(provider, 0);
 
       if (source) {
-        cgimage = CGImageSourceCreateImageAtIndex(source, 0, 0);
-
+        _cgimage = CGImageSourceCreateImageAtIndex(source, 0, 0);
         CFRelease(source);
       }
 
@@ -54,44 +51,85 @@
 }
 
 - (size_t)width {
-  return CGImageGetWidth(cgimage);
+  return CGImageGetWidth(self.cgimage);
 }
 
 - (size_t)height {
-  return CGImageGetHeight(cgimage);
+  return CGImageGetHeight(self.cgimage);
 }
 
 - (void)dealloc {
-  if (cgimage) {
-    CGImageRelease(cgimage);
+  if (_cgimage) {
+    CGImageRelease(_cgimage);
   }
-  [super dealloc];
 }
 
 + (ZXImage *)imageWithMatrix:(ZXBitMatrix *)matrix {
+  CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceGray();
+
+  CGFloat blackComponents[] = {0.0f, 1.0f};
+  CGColorRef black = CGColorCreate(colorSpace, blackComponents);
+  CGFloat whiteComponents[] = {1.0f, 1.0f};
+  CGColorRef white = CGColorCreate(colorSpace, whiteComponents);
+
+  CFRelease(colorSpace);
+
+  ZXImage *result = [self imageWithMatrix:matrix onColor:black offColor:white];
+
+  CGColorRelease(white);
+  CGColorRelease(black);
+
+  return result;
+}
+
++ (ZXImage *)imageWithMatrix:(ZXBitMatrix *)matrix onColor:(CGColorRef)onColor offColor:(CGColorRef)offColor {
+  int8_t onIntensities[4], offIntensities[4];
+
+  [self setColorIntensities:onIntensities color:onColor];
+  [self setColorIntensities:offIntensities color:offColor];
+
   int width = matrix.width;
   int height = matrix.height;
-  unsigned char *bytes = (unsigned char *)malloc(width * height * 4);
-  for(int y = 0; y < height; y++) {
-    for(int x = 0; x < width; x++) {
+  int8_t *bytes = (int8_t *)malloc(width * height * 4);
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
       BOOL bit = [matrix getX:x y:y];
-      unsigned char intensity = bit ? 0 : 255;
-      for(int i = 0; i < 3; i++) {
+      for (int i = 0; i < 4; i++) {
+        int8_t intensity = bit ? onIntensities[i] : offIntensities[i];
         bytes[y * width * 4 + x * 4 + i] = intensity;
       }
-      bytes[y * width * 4 + x * 4 + 3] = 255;
     }
   }
 
   CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-  CGContextRef c = CGBitmapContextCreate(bytes, width, height, 8, 4 * width, colorSpace, kCGImageAlphaPremultipliedLast);
+  CGContextRef c = CGBitmapContextCreate(bytes, width, height, 8, 4 * width, colorSpace, kCGBitmapAlphaInfoMask & kCGImageAlphaPremultipliedLast);
   CFRelease(colorSpace);
   CGImageRef image = CGBitmapContextCreateImage(c);
-  [NSMakeCollectable(image) autorelease];
   CFRelease(c);
   free(bytes);
 
-  return [[[ZXImage alloc] initWithCGImageRef:image] autorelease];
+  ZXImage *zxImage = [[ZXImage alloc] initWithCGImageRef:image];
+
+  CFRelease(image);
+  return zxImage;
+}
+
++ (void)setColorIntensities:(int8_t *)intensities color:(CGColorRef)color {
+  memset(intensities, 0, 4);
+
+  size_t numberOfComponents = CGColorGetNumberOfComponents(color);
+  const CGFloat *components = CGColorGetComponents(color);
+
+  if (numberOfComponents == 4) {
+    for (int i = 0; i < 4; i++) {
+      intensities[i] = components[i] * 255;
+    }
+  } else if (numberOfComponents == 2) {
+    for (int i = 0; i < 3; i++) {
+      intensities[i] = components[0] * 255;
+    }
+    intensities[3] = components[1] * 255;
+  }
 }
 
 @end

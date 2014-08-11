@@ -15,6 +15,7 @@
  */
 
 #import "ZXBitSource.h"
+#import "ZXByteArray.h"
 #import "ZXDataMatrixDecodedBitStreamParser.h"
 #import "ZXDecoderResult.h"
 #import "ZXErrors.h"
@@ -23,13 +24,13 @@
  * See ISO 16022:2006, Annex C Table C.1
  * The C40 Basic Character Set (*'s used for placeholders for the shift values)
  */
-const char C40_BASIC_SET_CHARS[40] = {
+const unichar C40_BASIC_SET_CHARS[40] = {
   '*', '*', '*', ' ', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
   'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N',
   'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
 };
 
-const char C40_SHIFT2_SET_CHARS[40] = {
+const unichar C40_SHIFT2_SET_CHARS[40] = {
   '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*',  '+', ',', '-', '.',
   '/', ':', ';', '<', '=', '>', '?',  '@', '[', '\\', ']', '^', '_'
 };
@@ -38,15 +39,15 @@ const char C40_SHIFT2_SET_CHARS[40] = {
  * See ISO 16022:2006, Annex C Table C.2
  * The Text Basic Character Set (*'s used for placeholders for the shift values)
  */
-const char TEXT_BASIC_SET_CHARS[40] = {
+const unichar TEXT_BASIC_SET_CHARS[40] = {
   '*', '*', '*', ' ', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
   'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
   'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
 };
 
-const char TEXT_SHIFT3_SET_CHARS[32] = {
-  '\'', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N',
-  'O',  'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '{', '|', '}', '~', (char) 127
+const unichar TEXT_SHIFT3_SET_CHARS[32] = {
+  '`', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N',
+  'O',  'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '{', '|', '}', '~', (unichar) 127
 };
 
 enum {
@@ -59,23 +60,10 @@ enum {
   BASE256_ENCODE
 };
 
-@interface ZXDataMatrixDecodedBitStreamParser ()
-
-+ (BOOL)decodeAnsiX12Segment:(ZXBitSource *)bits result:(NSMutableString *)result;
-+ (int)decodeAsciiSegment:(ZXBitSource *)bits result:(NSMutableString *)result resultTrailer:(NSMutableString *)resultTrailer;
-+ (BOOL)decodeBase256Segment:(ZXBitSource *)bits result:(NSMutableString *)result byteSegments:(NSMutableArray *)byteSegments;
-+ (BOOL)decodeC40Segment:(ZXBitSource *)bits result:(NSMutableString *)result;
-+ (void)decodeEdifactSegment:(ZXBitSource *)bits result:(NSMutableString *)result;
-+ (BOOL)decodeTextSegment:(ZXBitSource *)bits result:(NSMutableString *)result;
-+ (void)parseTwoBytes:(int)firstByte secondByte:(int)secondByte result:(int[])result;
-+ (int)unrandomize255State:(int)randomizedBase256Codeword base256CodewordPosition:(int)base256CodewordPosition;
-
-@end
-
 @implementation ZXDataMatrixDecodedBitStreamParser
 
-+ (ZXDecoderResult *)decode:(unsigned char *)bytes length:(unsigned int)length error:(NSError **)error {
-  ZXBitSource *bits = [[[ZXBitSource alloc] initWithBytes:bytes length:length] autorelease];
++ (ZXDecoderResult *)decode:(ZXByteArray *)bytes error:(NSError **)error {
+  ZXBitSource *bits = [[ZXBitSource alloc] initWithBytes:bytes];
   NSMutableString *result = [NSMutableString stringWithCapacity:100];
   NSMutableString *resultTrailer = [NSMutableString string];
   NSMutableArray *byteSegments = [NSMutableArray arrayWithCapacity:1];
@@ -84,26 +72,26 @@ enum {
     if (mode == ASCII_ENCODE) {
       mode = [self decodeAsciiSegment:bits result:result resultTrailer:resultTrailer];
       if (mode == -1) {
-        if (error) *error = FormatErrorInstance();
+        if (error) *error = ZXFormatErrorInstance();
         return nil;
       }
     } else {
       switch (mode) {
       case C40_ENCODE:
         if (![self decodeC40Segment:bits result:result]) {
-          if (error) *error = FormatErrorInstance();
+          if (error) *error = ZXFormatErrorInstance();
           return nil;
         }
         break;
       case TEXT_ENCODE:
         if (![self decodeTextSegment:bits result:result]) {
-          if (error) *error = FormatErrorInstance();
+          if (error) *error = ZXFormatErrorInstance();
           return nil;
         }
         break;
       case ANSIX12_ENCODE:
         if (![self decodeAnsiX12Segment:bits result:result]) {
-          if (error) *error = FormatErrorInstance();
+          if (error) *error = ZXFormatErrorInstance();
           return nil;
         }
         break;
@@ -112,12 +100,12 @@ enum {
         break;
       case BASE256_ENCODE:
         if (![self decodeBase256Segment:bits result:result byteSegments:byteSegments]) {
-          if (error) *error = FormatErrorInstance();
+          if (error) *error = ZXFormatErrorInstance();
           return nil;
         }
         break;
       default:
-        if (error) *error = FormatErrorInstance();
+        if (error) *error = ZXFormatErrorInstance();
         return nil;
       }
       mode = ASCII_ENCODE;
@@ -126,13 +114,11 @@ enum {
   if ([resultTrailer length] > 0) {
     [result appendString:resultTrailer];
   }
-  return [[[ZXDecoderResult alloc] initWithRawBytes:bytes
-                                             length:length
-                                               text:result
-                                       byteSegments:[byteSegments count] == 0 ? nil : byteSegments
-                                            ecLevel:nil] autorelease];
+  return [[ZXDecoderResult alloc] initWithRawBytes:bytes
+                                              text:result
+                                      byteSegments:[byteSegments count] == 0 ? nil : byteSegments
+                                           ecLevel:nil];
 }
-
 
 /**
  * See ISO 16022:2006, 5.2.3 and Annex C, Table C.2
@@ -195,7 +181,6 @@ enum {
   } while (bits.available > 0);
   return ASCII_ENCODE;
 }
-
 
 /**
  * See ISO 16022:2006, 5.2.5 and Annex C, Table C.1
@@ -283,7 +268,6 @@ enum {
 
   return YES;
 }
-
 
 /**
  * See ISO 16022:2006, 5.2.6 and Annex C, Table C.2
@@ -377,7 +361,6 @@ enum {
   return YES;
 }
 
-
 /**
  * See ISO 16022:2006, 5.2.7
  */
@@ -430,7 +413,6 @@ enum {
   result[2] = fullBitValue - temp * 40;
 }
 
-
 /**
  * See ISO 16022:2006, 5.2.8 and Annex C Table C.3
  */
@@ -462,7 +444,6 @@ enum {
   } while (bits.available > 0);
 }
 
-
 /**
  * See ISO 16022:2006, 5.2.9 and Annex B, B.2
  */
@@ -482,22 +463,18 @@ enum {
     return NO;
   }
 
-  NSMutableArray *bytesArray = [NSMutableArray arrayWithCapacity:count];
-  unsigned char bytes[count];
+  ZXByteArray *bytes = [[ZXByteArray alloc] initWithLength:count];
   for (int i = 0; i < count; i++) {
     if ([bits available] < 8) {
       return NO;
     }
-    unsigned char byte = (unsigned char)[self unrandomize255State:[bits readBits:8] base256CodewordPosition:codewordPosition++];
-    bytes[i] = byte;
-    [bytesArray addObject:[NSNumber numberWithChar:byte]];
+    bytes.array[i] = (int8_t)[self unrandomize255State:[bits readBits:8] base256CodewordPosition:codewordPosition++];
   }
-  [byteSegments addObject:bytesArray];
+  [byteSegments addObject:bytes];
 
-  [result appendString:[[[NSString alloc] initWithBytes:bytes length:count encoding:NSISOLatin1StringEncoding] autorelease]];
+  [result appendString:[[NSString alloc] initWithBytes:bytes.array length:bytes.length encoding:NSISOLatin1StringEncoding]];
   return YES;
 }
-
 
 /**
  * See ISO 16022:2006, Annex B, B.2

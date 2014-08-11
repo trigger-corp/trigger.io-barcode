@@ -19,53 +19,31 @@
 #import "ZXMonochromeRectangleDetector.h"
 #import "ZXResultPoint.h"
 
-int const MONOCHROME_MAX_MODULES = 32;
+const int ZX_MONOCHROME_MAX_MODULES = 32;
 
 @interface ZXMonochromeRectangleDetector ()
 
-@property (nonatomic, retain) ZXBitMatrix *image;
-
-- (NSArray *)blackWhiteRange:(int)fixedDimension maxWhiteRun:(int)maxWhiteRun minDim:(int)minDim maxDim:(int)maxDim horizontal:(BOOL)horizontal;
-- (ZXResultPoint *)findCornerFromCenter:(int)centerX deltaX:(int)deltaX left:(int)left right:(int)right centerY:(int)centerY deltaY:(int)deltaY top:(int)top bottom:(int)bottom maxWhiteRun:(int)maxWhiteRun;
+@property (nonatomic, strong, readonly) ZXBitMatrix *image;
 
 @end
 
-
 @implementation ZXMonochromeRectangleDetector
 
-@synthesize image;
-
-- (id)initWithImage:(ZXBitMatrix *)anImage {
+- (id)initWithImage:(ZXBitMatrix *)image {
   if (self = [super init]) {
-    self.image = anImage;
+    _image = image;
   }
 
   return self;
 }
 
-- (void)dealloc {
-  [image release];
-
-  [super dealloc];
-}
-
-
-/**
- * Detects a rectangular region of black and white -- mostly black -- with a region of mostly
- * white, in an image.
- * 
- * Returns a ResultPoint NSArray describing the corners of the rectangular region. The first and
- * last points are opposed on the diagonal, as are the second and third. The first point will be
- * the topmost point and the last, the bottommost. The second point will be leftmost and the
- * third, the rightmost
- */
 - (NSArray *)detectWithError:(NSError **)error {
   int height = [self.image height];
   int width = [self.image width];
   int halfHeight = height >> 1;
   int halfWidth = width >> 1;
-  int deltaY = MAX(1, height / (MONOCHROME_MAX_MODULES << 3) > 1);
-  int deltaX = MAX(1, width / (MONOCHROME_MAX_MODULES << 3) > 1);
+  int deltaY = MAX(1, height / (ZX_MONOCHROME_MAX_MODULES << 3) > 1);
+  int deltaX = MAX(1, width / (ZX_MONOCHROME_MAX_MODULES << 3) > 1);
 
   int top = 0;
   int bottom = height;
@@ -74,28 +52,28 @@ int const MONOCHROME_MAX_MODULES = 32;
   ZXResultPoint *pointA = [self findCornerFromCenter:halfWidth deltaX:0 left:left right:right
                                               centerY:halfHeight deltaY:-deltaY top:top bottom:bottom maxWhiteRun:halfWidth >> 1];
   if (!pointA) {
-    if (error) *error = NotFoundErrorInstance();
+    if (error) *error = ZXNotFoundErrorInstance();
     return nil;
   }
   top = (int)[pointA y] - 1;
   ZXResultPoint *pointB = [self findCornerFromCenter:halfWidth deltaX:-deltaX left:left right:right
                                               centerY:halfHeight deltaY:0 top:top bottom:bottom maxWhiteRun:halfHeight >> 1];
   if (!pointB) {
-    if (error) *error = NotFoundErrorInstance();
+    if (error) *error = ZXNotFoundErrorInstance();
     return nil;
   }
   left = (int)[pointB x] - 1;
   ZXResultPoint *pointC = [self findCornerFromCenter:halfWidth deltaX:deltaX left:left right:right
                                               centerY:halfHeight deltaY:0 top:top bottom:bottom maxWhiteRun:halfHeight >> 1];
   if (!pointC) {
-    if (error) *error = NotFoundErrorInstance();
+    if (error) *error = ZXNotFoundErrorInstance();
     return nil;
   }
   right = (int)[pointC x] + 1;
   ZXResultPoint *pointD = [self findCornerFromCenter:halfWidth deltaX:0 left:left right:right
                                               centerY:halfHeight deltaY:deltaY top:top bottom:bottom maxWhiteRun:halfWidth >> 1];
   if (!pointD) {
-    if (error) *error = NotFoundErrorInstance();
+    if (error) *error = ZXNotFoundErrorInstance();
     return nil;
   }
   bottom = (int)[pointD y] + 1;
@@ -103,30 +81,30 @@ int const MONOCHROME_MAX_MODULES = 32;
   pointA = [self findCornerFromCenter:halfWidth deltaX:0 left:left right:right
                               centerY:halfHeight deltaY:-deltaY top:top bottom:bottom maxWhiteRun:halfWidth >> 2];
   if (!pointA) {
-    if (error) *error = NotFoundErrorInstance();
+    if (error) *error = ZXNotFoundErrorInstance();
     return nil;
   }
 
-  return [NSArray arrayWithObjects:pointA, pointB, pointC, pointD, nil];
+  return @[pointA, pointB, pointC, pointD];
 }
-
 
 /**
  * Attempts to locate a corner of the barcode by scanning up, down, left or right from a center
  * point which should be within the barcode.
- * 
- * Params:
- * centerX center's x component (horizontal)
- * deltaX same as deltaY but change in x per step instead
- * left minimum value of x
- * right maximum value of x
- * centerY center's y component (vertical)
- * deltaY change in y per step. If scanning up this is negative; down, positive;
- * left or right, 0
- * top minimum value of y to search through (meaningless when di == 0)
- * bottom maximum value of y
- * maxWhiteRun maximum run of white pixels that can still be considered to be within
- * the barcode
+ *
+ * @param centerX center's x component (horizontal)
+ * @param deltaX same as deltaY but change in x per step instead
+ * @param left minimum value of x
+ * @param right maximum value of x
+ * @param centerY center's y component (vertical)
+ * @param deltaY change in y per step. If scanning up this is negative; down, positive;
+ *  left or right, 0
+ * @param top minimum value of y to search through (meaningless when di == 0)
+ * @param bottom maximum value of y
+ * @param maxWhiteRun maximum run of white pixels that can still be considered to be within
+ *  the barcode
+ * @return a {@link com.google.zxing.ResultPoint} encapsulating the corner that was found
+ *  or nil if such a point cannot be found
  */
 - (ZXResultPoint *)findCornerFromCenter:(int)centerX deltaX:(int)deltaX left:(int)left right:(int)right centerY:(int)centerY deltaY:(int)deltaY top:(int)top bottom:(int)bottom maxWhiteRun:(int)maxWhiteRun {
   NSArray *lastRange = nil;
@@ -143,23 +121,23 @@ int const MONOCHROME_MAX_MODULES = 32;
       }
       if (deltaX == 0) {
         int lastY = y - deltaY;
-        if ([[lastRange objectAtIndex:0] intValue] < centerX) {
-          if ([[lastRange objectAtIndex:0] intValue] > centerX) {
-            return [[[ZXResultPoint alloc] initWithX:deltaY > 0 ? [[lastRange objectAtIndex:0] intValue] : [[lastRange objectAtIndex:1] intValue] y:lastY] autorelease];
+        if ([lastRange[0] intValue] < centerX) {
+          if ([lastRange[0] intValue] > centerX) {
+            return [[ZXResultPoint alloc] initWithX:deltaY > 0 ? [lastRange[0] intValue] : [lastRange[1] intValue] y:lastY];
           }
-          return [[[ZXResultPoint alloc] initWithX:[[lastRange objectAtIndex:0] intValue] y:lastY] autorelease];
+          return [[ZXResultPoint alloc] initWithX:[lastRange[0] intValue] y:lastY];
         } else {
-          return [[[ZXResultPoint alloc] initWithX:[[lastRange objectAtIndex:1] intValue] y:lastY] autorelease];
+          return [[ZXResultPoint alloc] initWithX:[lastRange[1] intValue] y:lastY];
         }
       } else {
         int lastX = x - deltaX;
-        if ([[lastRange objectAtIndex:0] intValue] < centerY) {
-          if ([[lastRange objectAtIndex:1] intValue] > centerY) {
-            return [[[ZXResultPoint alloc] initWithX:lastX y:deltaX < 0 ? [[lastRange objectAtIndex:0] intValue] : [[lastRange objectAtIndex:1] intValue]] autorelease];
+        if ([lastRange[0] intValue] < centerY) {
+          if ([lastRange[1] intValue] > centerY) {
+            return [[ZXResultPoint alloc] initWithX:lastX y:deltaX < 0 ? [lastRange[0] intValue] : [lastRange[1] intValue]];
           }
-          return [[[ZXResultPoint alloc] initWithX:lastX y:[[lastRange objectAtIndex:0] intValue]] autorelease];
+          return [[ZXResultPoint alloc] initWithX:lastX y:[lastRange[0] intValue]];
         } else {
-          return [[[ZXResultPoint alloc] initWithX:lastX y:[[lastRange objectAtIndex:1] intValue]] autorelease];
+          return [[ZXResultPoint alloc] initWithX:lastX y:[lastRange[1] intValue]];
         }
       }
     }
@@ -169,23 +147,23 @@ int const MONOCHROME_MAX_MODULES = 32;
   return nil;
 }
 
-
 /**
  * Computes the start and end of a region of pixels, either horizontally or vertically, that could
  * be part of a Data Matrix barcode.
- * 
- * Params:
- * fixedDimension if scanning horizontally, this is the row (the fixed vertical location)
- * where we are scanning. If scanning vertically it's the column, the fixed horizontal location
- * maxWhiteRun largest run of white pixels that can still be considered part of the
- * barcode region
- * minDim minimum pixel location, horizontally or vertically, to consider
- * maxDim maximum pixel location, horizontally or vertically, to consider
- * horizontal if true, we're scanning left-right, instead of up-down
+ *
+ * @param fixedDimension if scanning horizontally, this is the row (the fixed vertical location)
+ *  where we are scanning. If scanning vertically it's the column, the fixed horizontal location
+ * @param maxWhiteRun largest run of white pixels that can still be considered part of the
+ *  barcode region
+ * @param minDim minimum pixel location, horizontally or vertically, to consider
+ * @param maxDim maximum pixel location, horizontally or vertically, to consider
+ * @param horizontal if true, we're scanning left-right, instead of up-down
+ * @return int[] with start and end of found range, or nil if no such range is found
+ *  (e.g. only white was found)
  */
 - (NSArray *)blackWhiteRange:(int)fixedDimension maxWhiteRun:(int)maxWhiteRun minDim:(int)minDim maxDim:(int)maxDim horizontal:(BOOL)horizontal {
   int center = (minDim + maxDim) >> 1;
-  
+
   int start = center;
   while (start >= minDim) {
     if (horizontal ? [self.image getX:start y:fixedDimension] : [self.image getX:fixedDimension y:start]) {
@@ -225,7 +203,7 @@ int const MONOCHROME_MAX_MODULES = 32;
   }
 
   end--;
-  return end > start ? [NSArray arrayWithObjects:[NSNumber numberWithInt:start], [NSNumber numberWithInt:end], nil] : nil;
+  return end > start ? @[@(start), @(end)] : nil;
 }
 
 @end

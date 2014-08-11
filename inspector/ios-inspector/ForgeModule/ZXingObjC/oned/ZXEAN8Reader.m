@@ -16,72 +16,52 @@
 
 #import "ZXBitArray.h"
 #import "ZXEAN8Reader.h"
+#import "ZXIntArray.h"
 
 @interface ZXEAN8Reader ()
 
-@property (nonatomic, assign) int *decodeMiddleCounters;
+@property (nonatomic, strong, readonly) ZXIntArray *decodeMiddleCounters;
 
 @end
 
 @implementation ZXEAN8Reader
 
-@synthesize decodeMiddleCounters;
-
 - (id)init {
   if (self = [super init]) {
-    self.decodeMiddleCounters = (int *)malloc(sizeof(4) * sizeof(int));
-    self.decodeMiddleCounters[0] = 0;
-    self.decodeMiddleCounters[1] = 0;
-    self.decodeMiddleCounters[2] = 0;
-    self.decodeMiddleCounters[3] = 0;
+    _decodeMiddleCounters = [[ZXIntArray alloc] initWithLength:4];
   }
 
   return self;
 }
 
-- (void)dealloc {
-  if (self.decodeMiddleCounters != NULL) {
-    free(self.decodeMiddleCounters);
-    self.decodeMiddleCounters = NULL;
-  }
-
-  [super dealloc];
-}
-
 - (int)decodeMiddle:(ZXBitArray *)row startRange:(NSRange)startRange result:(NSMutableString *)result error:(NSError **)error {
-  const int countersLen = 4;
-  int counters[countersLen];
-  memset(counters, 0, countersLen * sizeof(int));
-
+  ZXIntArray *counters = self.decodeMiddleCounters;
+  [counters clear];
   int end = row.size;
-  int rowOffset = NSMaxRange(startRange);
+  int rowOffset = (int)NSMaxRange(startRange);
 
   for (int x = 0; x < 4 && rowOffset < end; x++) {
-    int bestMatch = [ZXUPCEANReader decodeDigit:row counters:counters countersLen:countersLen rowOffset:rowOffset patternType:UPC_EAN_PATTERNS_L_PATTERNS error:error];
+    int bestMatch = [ZXUPCEANReader decodeDigit:row counters:counters rowOffset:rowOffset patternType:ZX_UPC_EAN_PATTERNS_L_PATTERNS error:error];
     if (bestMatch == -1) {
       return -1;
     }
     [result appendFormat:@"%C", (unichar)('0' + bestMatch)];
-    for (int i = 0; i < countersLen; i++) {
-      rowOffset += counters[i];
-    }
+    rowOffset += [counters sum];
   }
 
-  NSRange middleRange = [[self class] findGuardPattern:row rowOffset:rowOffset whiteFirst:YES pattern:(int *)MIDDLE_PATTERN patternLen:MIDDLE_PATTERN_LEN error:error];
+  NSRange middleRange = [[self class] findGuardPattern:row rowOffset:rowOffset whiteFirst:YES pattern:ZX_UPC_EAN_MIDDLE_PATTERN patternLen:ZX_UPC_EAN_MIDDLE_PATTERN_LEN error:error];
   if (middleRange.location == NSNotFound) {
     return -1;
   }
-  rowOffset = NSMaxRange(middleRange);
+  rowOffset = (int)NSMaxRange(middleRange);
 
   for (int x = 0; x < 4 && rowOffset < end; x++) {
-    int bestMatch = [ZXUPCEANReader decodeDigit:row counters:counters countersLen:countersLen rowOffset:rowOffset patternType:UPC_EAN_PATTERNS_L_PATTERNS error:error];
+    int bestMatch = [ZXUPCEANReader decodeDigit:row counters:counters rowOffset:rowOffset patternType:ZX_UPC_EAN_PATTERNS_L_PATTERNS error:error];
     if (bestMatch == -1) {
       return -1;
     }
     [result appendFormat:@"%C", (unichar)('0' + bestMatch)];
-    for (int i = 0; i < countersLen; i++) {
-      rowOffset += counters[i];
-    }
+    rowOffset += [counters sum];
   }
 
   return rowOffset;
