@@ -46,6 +46,7 @@ static barcode_ViewController *me;
 #pragma mark - View Controller Methods
 
 - (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
 	me = self;
 	self.capture = [[ZXCapture alloc] init];
 	self.capture.delegate = self;
