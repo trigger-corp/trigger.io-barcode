@@ -90,7 +90,7 @@ static barcode_ViewController *me;
 	return toInterfaceOrientation == UIInterfaceOrientationPortrait;
 }
 
-- (NSUInteger)supportedInterfaceOrientations {
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
 	return UIInterfaceOrientationMaskPortrait;
 }
 

@@ -1,8 +1,8 @@
 {
-    "changes": "* Support arm64 devices running iOS 8", 
-    "description": "Scanner for 2D barcodes and QR codes.\n\nThe barcode module allows the user to scan a barcode or QR code using the device's camera, returning its content and the barcode type.", 
-    "min_platform_version": "v2.1.0", 
-    "namespace": "barcode", 
-    "platform_version": "v2.2.0", 
-    "version": "2.4"
+	"changes": "* Update module code for iOS 10 support.\n* Display usage description describing the reason why the barcode module needs to access the device camera on iOS 10 devices",
+	"description": "Scanner for 2D barcodes and QR codes.\n\nThe barcode module allows the user to scan a barcode or QR code using the device's camera, returning its content and the barcode type.",
+	"min_platform_version": "v2.4.5",
+	"namespace": "barcode",
+	"platform_version": "v2.4.5",
+	"version": "2.5"
 }
