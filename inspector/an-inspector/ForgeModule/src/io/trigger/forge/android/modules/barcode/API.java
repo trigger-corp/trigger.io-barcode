@@ -19,10 +19,11 @@ import android.content.pm.ResolveInfo;
 import android.net.Uri;
 
 public class API {
-	private static String bs_package = "com.google.zxing.client.android";
+	private static String intent_name = "com.google.zxing.client.android.SCAN";
+    private static String bs_package = "com.srowen.bs.android";
 
 	public static void scan(final ForgeTask task) {
-		Intent intent = new Intent(bs_package + ".SCAN");
+		Intent intent = new Intent(intent_name);
 		intent.addCategory(Intent.CATEGORY_DEFAULT);
 		intent.setPackage(bs_package);
 		intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
@@ -53,7 +54,7 @@ public class API {
 				public void run() {					
 					AlertDialog.Builder downloadDialog = new AlertDialog.Builder(ForgeApp.getActivity());
 					downloadDialog.setTitle("Install Barcode Scanner?");
-					downloadDialog.setMessage("This application requires Barcode Scanner. Would you like to install it?");
+					downloadDialog.setMessage("This application requires Barcode Scanner+. Would you like to install it?");
 					downloadDialog.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
 						public void onClick(DialogInterface dialogInterface, int i) {
 							Uri uri = Uri.parse("market://details?id=" + bs_package);
