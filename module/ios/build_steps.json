@@ -1,12 +1,8 @@
 [
-	{ "do": { "add_ios_system_framework": "AVFoundation.framework" } },
-	{ "do": { "add_ios_system_framework": "CoreGraphics.framework" } },
-	{ "do": { "add_ios_system_framework": "CoreMedia.framework" } },
-	{ "do": { "add_ios_system_framework": "CoreVideo.framework" } },
-	{ "do": { "add_ios_system_framework": "ImageIO.framework" } },
-	{ "do": { "add_ios_system_framework": "QuartzCore.framework" } },
-	{ "do": { "set_in_info_plist": {
-		"key": "NSCameraUsageDescription",
-		"value": "This app needs access to your device camera to scan barcodes."
-	} } }
+    { "do": { "add_ios_system_framework": "AVFoundation.framework" } },
+    { "do": { "add_ios_system_framework": "CoreGraphics.framework" } },
+    { "do": { "add_ios_system_framework": "CoreMedia.framework" } },
+    { "do": { "add_ios_system_framework": "CoreVideo.framework" } },
+    { "do": { "add_ios_system_framework": "ImageIO.framework" } },
+    { "do": { "add_ios_system_framework": "QuartzCore.framework" } }
 ]
