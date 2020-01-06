@@ -33,6 +33,7 @@
 @end
 
 static barcode_ViewController *me;
+static bool haveResult = false;
 
 @implementation barcode_ViewController
 
@@ -47,6 +48,9 @@ static barcode_ViewController *me;
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
+
+    haveResult = false;
+
 	me = self;
 	self.capture = [[ZXCapture alloc] init];
 	self.capture.delegate = self;
@@ -64,6 +68,13 @@ static barcode_ViewController *me;
 	[self.view bringSubviewToFront:self.flashButton];
 }
 
+- (void)viewWillDisappear:(BOOL)animated {
+    if (!haveResult) {
+        [forgeTask error:@"User cancelled" type:@"EXPECTED_FAILURE" subtype:nil];
+    }
+}
+
+
 - (void)releaseAfterDelay {
 	double delayInSeconds = 5.0;
 	dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delayInSeconds * NSEC_PER_SEC));
@@ -75,7 +86,6 @@ static barcode_ViewController *me;
 
 - (IBAction)buttonTapped:(UIButton *)button {
 	[self dismissViewControllerHelper:^{
-		[forgeTask error:@"User cancelled" type:@"EXPECTED_FAILURE" subtype:nil];
 		[self releaseAfterDelay];
 	}];
 }
@@ -90,9 +100,11 @@ static barcode_ViewController *me;
 	return toInterfaceOrientation == UIInterfaceOrientationPortrait;
 }
 
+
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
 	return UIInterfaceOrientationMaskPortrait;
 }
+
 
 #pragma mark - Private Methods
 
@@ -175,6 +187,7 @@ static barcode_ViewController *me;
 
 - (void)captureResult:(ZXCapture*)capture result:(ZXResult*)result {
 	if (result) {
+        haveResult = true;
 		self.capture.delegate = nil;
 		[self dismissViewControllerHelper:^{
 			[forgeTask success:[self displayForResult:result]];

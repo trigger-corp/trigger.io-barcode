@@ -1,8 +1,8 @@
 {
-    "changes": "* Fixed: Installation of barcode scanner app fails on Android",
+    "changes": "* Fixed: Black screen on iOS 12.x devices after scanning a barcode.",
     "description": "Scanner for 2D barcodes and QR codes.\n\nThe barcode module allows the user to scan a barcode or QR code using the device's camera, returning its content and the barcode type.",
-    "min_platform_version": "v2.7.5",
+    "min_platform_version": "v2.8.0",
     "namespace": "barcode",
-    "platform_version": "v2.7.5",
-    "version": "2.7"
+    "platform_version": "v2.8.4",
+    "version": "2.9"
 }

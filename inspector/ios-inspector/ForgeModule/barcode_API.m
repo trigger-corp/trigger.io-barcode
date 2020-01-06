@@ -12,11 +12,12 @@
 @implementation barcode_API
 
 + (void) scan:(ForgeTask*)task {
-	barcode_ViewController *view = [[barcode_ViewController alloc] initWithNibName:@"barcode_ViewController" bundle:[NSBundle bundleWithPath:[[NSBundle mainBundle] pathForResource:@"barcode" ofType:@"bundle"]]];
+	barcode_ViewController *viewController = [[barcode_ViewController alloc] initWithNibName:@"barcode_ViewController" bundle:[NSBundle bundleWithPath:[[NSBundle mainBundle] pathForResource:@"barcode" ofType:@"bundle"]]];
 	
-	view.forgeTask = task;
-	
-	[[[ForgeApp sharedApp] viewController] presentModalViewController:view animated:YES];
+	viewController.forgeTask = task;
+    viewController.modalPresentationStyle = UIModalPresentationOverFullScreen;
+
+	[[[ForgeApp sharedApp] viewController] presentViewController:viewController animated:TRUE completion:^{}];
 }
 
 @end
