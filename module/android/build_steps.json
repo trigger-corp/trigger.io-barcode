@@ -1,0 +1,5 @@
+[
+    { "do": { "android_add_gradle_dependency": "com.journeyapps:zxing-android-embedded:3.6.0"  } },
+    { "do": { "android_add_gradle_dependency": "com.google.zxing:core:3.3.0"  } },
+    { "do": { "android_add_gradle_dependency": "androidx.appcompat:appcompat:1.0.2"  } }
+]
